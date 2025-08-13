@@ -340,45 +340,6 @@ const Vitality = ({
         </div>
       </div>
 
-      {/* Points Breakdown */}
-      <div className="bg-white p-6 rounded-xl border border-discovery-gold/20 shadow-sm">
-        <h3 className="text-lg font-semibold mb-4 text-discovery-blue flex items-center">
-          <span className="mr-2 text-discovery-gold text-xl">📊</span>
-          Points Come From Health Activities
-        </h3>
-
-        <div className="space-y-3">
-          {activitiesCompleted.slice(0, 3).map((activity, idx) => (
-            <div
-              key={idx}
-              className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
-            >
-              <span className="text-sm font-medium">
-                {activity.description}
-              </span>
-              <span className="text-discovery-blue font-bold">
-                {activity.points.toLocaleString()} pts
-              </span>
-            </div>
-          ))}
-
-          <div className="flex justify-between items-center p-3 bg-discovery-gold/10 rounded-lg border border-discovery-gold/20">
-            <span className="text-sm font-bold">Total Annual Points</span>
-            <span className="text-discovery-gold font-bold text-lg">
-              {estimatedPoints.toLocaleString()} pts
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-4 p-4 bg-discovery-blue/10 rounded-lg">
-          <p className="text-xs text-gray-600">
-            <strong>Note:</strong> Vitality points come from health activities &
-            fitness, not spending. Points reset annually and determine your
-            reward rates.
-          </p>
-        </div>
-      </div>
-
       {/* Discovery Miles from Spending */}
       <div className="bg-white p-6 rounded-xl border border-discovery-gold/20 shadow-sm">
         <h3 className="text-lg font-semibold mb-4 text-discovery-blue flex items-center">
@@ -584,6 +545,34 @@ const Vitality = ({
           </div>
         </div>
       )}
+
+      {/* Financial Literacy Academy */}
+      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-6 rounded-xl border border-discovery-gold/20">
+        <div className="text-center">
+          <div className="mx-auto mb-4 w-16 h-16 bg-gradient-to-r from-discovery-gold to-discovery-blue rounded-full flex items-center justify-center">
+            <span className="text-white text-2xl">🛡️</span>
+          </div>
+          <h3 className="text-lg font-semibold mb-2 text-discovery-blue">
+            Financial Literacy Academy
+          </h3>
+          <p className="text-gray-600 mb-4 text-sm">
+            Boost your financial knowledge and earn Vitality points through
+            interactive learning modules
+          </p>
+          <a
+            href="https://dainty-bonbon-de4898.netlify.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-discovery-gold to-discovery-blue text-white rounded-lg font-semibold hover:from-discovery-gold/90 hover:to-discovery-blue/90 transition-all transform hover:scale-[1.02] shadow-lg"
+          >
+            <span className="mr-2 text-xl">🛡️</span>
+            Access Academy
+          </a>
+          <p className="text-xs text-gray-500 mt-3">
+            Complete courses to improve your financial wellness and earn rewards
+          </p>
+        </div>
+      </div>
 
       {/* Important Notes */}
       <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-6 rounded-xl border border-discovery-gold/20">
