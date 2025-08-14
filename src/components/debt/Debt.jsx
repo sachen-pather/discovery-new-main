@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { getDebtAnalysis, getApiHealth } from "../../utils/api";
+import { getDebtAnalysis, getApiHealth, uploadDebtCSV } from "../../utils/api";
 import {
   CreditCard,
   BarChart3,
@@ -31,6 +31,7 @@ const Debt = ({
   realAnalysisResults,
   debtAnalysisResults,
   setDebtAnalysisResults,
+  debtInvestmentSplit = null, // Split allocation prop
 }) => {
   // UI state
   const [selectedStrategy, setSelectedStrategy] = useState("avalanche");
@@ -47,14 +48,14 @@ const Debt = ({
   const [isUploadingDebt, setIsUploadingDebt] = useState(false);
   const [debtUploadError, setDebtUploadError] = useState(null);
 
-  // Backend analysis
+  // Backend analysis state
   const [backendAnalysis, setBackendAnalysis] = useState(debtAnalysisResults);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [features, setFeatures] = useState(null);
   const abortRef = useRef(null);
 
-  // Budget inputs with enhanced mode support
+  // Budget calculations - FIXED ORDER: Calculate these FIRST before using them
   const monthlyIncome =
     Number(realAnalysisResults?.total_income) ||
     Number(financialData?.totalIncome) ||
@@ -65,6 +66,13 @@ const Debt = ({
   const optimizedAvailable =
     Number(realAnalysisResults?.optimized_available_income) ||
     Number(availableMonthly);
+
+  // Split allocation logic - USE the calculated values above
+  const debtBudget = debtInvestmentSplit?.debt_budget || 0;
+  const hasAllocatedBudget = debtInvestmentSplit?.has_split && debtBudget > 0;
+  const displayBudget = hasAllocatedBudget
+    ? debtBudget
+    : optimizedAvailable || availableMonthly;
 
   const enhancedMode = !!realAnalysisResults?.enhanced_mode;
 
@@ -82,34 +90,32 @@ const Debt = ({
       }));
   }, [realAnalysisResults]);
 
-  // Update local state when prop changes
+  // Check if we have actual debt data
+  const hasActualDebts = () => {
+    const result =
+      backendAnalysis?.debts_uploaded &&
+      backendAnalysis.debts_uploaded.length > 0 &&
+      backendAnalysis.debt_summary?.total_debts > 0;
+    return result;
+  };
+
+  // Effects
   useEffect(() => {
-    if (debtAnalysisResults) {
-      setBackendAnalysis(debtAnalysisResults);
-      if (debtAnalysisResults.recommendation) {
-        setSelectedStrategy(debtAnalysisResults.recommendation);
-      }
+    // Always update backendAnalysis to match the prop
+    setBackendAnalysis(debtAnalysisResults);
+
+    // Handle strategy selection
+    if (
+      debtAnalysisResults?.recommendation &&
+      (debtAnalysisResults.avalanche || debtAnalysisResults.snowball)
+    ) {
+      setSelectedStrategy(debtAnalysisResults.recommendation);
+    } else {
+      setSelectedStrategy("avalanche");
     }
   }, [debtAnalysisResults]);
 
-  // Initial feature health check
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const apiHealth = await getApiHealth();
-        if (!alive) return;
-        setFeatures(apiHealth?.features || null);
-      } catch (e) {
-        // non-fatal
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  // Handle debt CSV upload
+  // Debt upload handler
   const handleDebtUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -123,41 +129,21 @@ const Debt = ({
     setDebtUploadError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append(
-        "available_monthly",
-        optimizedAvailable || availableMonthly
+      const result = await uploadDebtCSV(
+        file,
+        displayBudget, // Use allocated budget if available
+        realAnalysisResults
       );
 
-      // Pass bank statement data if available
-      if (realAnalysisResults) {
-        formData.append(
-          "bank_statement_data",
-          JSON.stringify(realAnalysisResults)
-        );
-      }
-
-      const response = await fetch("http://localhost:5000/upload-debt-csv", {
-        method: "POST",
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Debt analysis failed");
-      }
-
-      // Update both local state and App state for persistence
       setBackendAnalysis(result);
       setDebtAnalysisResults(result);
 
-      // Auto-select recommendation if present
       if (result?.recommendation && (result.avalanche || result.snowball)) {
         setSelectedStrategy(
           result.recommendation === "snowball" ? "snowball" : "avalanche"
         );
+      } else {
+        setSelectedStrategy("avalanche");
       }
 
       console.log("Debt upload and analysis completed:", result);
@@ -179,36 +165,28 @@ const Debt = ({
       0
     );
 
-    // Calculate total debt and weighted average rate
     const totalBalance = debts.reduce((sum, debt) => sum + debt.balance, 0);
     const weightedRate =
       debts.reduce((sum, debt) => sum + debt.apr * debt.balance, 0) /
       totalBalance;
 
-    // FIXED: Proper debt payoff calculation for minimum payments only
     const monthlyRate = weightedRate / 12;
 
-    // Use the standard debt payoff formula: months = -log(1 - (balance * rate / payment)) / log(1 + rate)
     let estimatedMonths;
 
     if (monthlyRate === 0) {
-      // No interest case
       estimatedMonths = totalBalance / totalMinPayments;
     } else {
-      // With interest - check if payment covers interest
       const monthlyInterest = totalBalance * monthlyRate;
 
       if (totalMinPayments <= monthlyInterest) {
-        // Payments don't even cover interest - will never pay off
         estimatedMonths = 999; // Effectively infinite
       } else {
-        // Standard formula: -ln(1 - (P * r / PMT)) / ln(1 + r)
         const ratio = (totalBalance * monthlyRate) / totalMinPayments;
         estimatedMonths = -Math.log(1 - ratio) / Math.log(1 + monthlyRate);
       }
     }
 
-    // Calculate total interest paid
     const totalPaid = totalMinPayments * estimatedMonths;
     const totalInterest = totalPaid - totalBalance;
 
@@ -247,7 +225,6 @@ const Debt = ({
     return colors[index % colors.length];
   };
 
-  // Simple payoff calculator
   const calculatePayoffMonths = (balance, rate, payment) => {
     const b = Number(balance) || 0;
     const r = (Number(rate) || 0) / 100 / 12;
@@ -264,7 +241,6 @@ const Debt = ({
     const { name, type, balance, interestRate, minimumPayment } = newDebt;
     if (!name || !balance || !interestRate || !minimumPayment) return;
 
-    // For manual entry, we'll create a mock result structure
     const mockDebt = {
       name: String(name),
       balance: Number(balance),
@@ -273,7 +249,6 @@ const Debt = ({
       kind: type,
     };
 
-    // Add to analysis if it exists, or create a new one
     if (backendAnalysis) {
       const updatedAnalysis = {
         ...backendAnalysis,
@@ -303,6 +278,7 @@ const Debt = ({
     setShowAddDebt(false);
   };
 
+  // Get current strategy and minimum payment scenario
   const currentStrategy =
     backendAnalysis?.[selectedStrategy] ||
     backendAnalysis?.avalanche ||
@@ -310,16 +286,14 @@ const Debt = ({
     null;
 
   const minPaymentScenario = calculateMinPaymentScenario();
-
   const hasRealData =
     realAnalysisResults && realAnalysisResults.total_income !== undefined;
-  const hasDebtData = backendAnalysis;
+  const hasDebtData = hasActualDebts();
 
   // Get debt strategies for comparison
   const getDebtStrategies = () => {
     const strategies = {};
 
-    // Add minimum payment scenario
     if (minPaymentScenario) {
       strategies.minimum = {
         name: "Minimum Payments",
@@ -329,7 +303,6 @@ const Debt = ({
       };
     }
 
-    // Add optimized strategies
     if (backendAnalysis?.avalanche) {
       strategies.avalanche = {
         name: "Avalanche Method",
@@ -368,14 +341,31 @@ const Debt = ({
           </div>
         )}
 
+        {/* Split Allocation Indicator */}
+        {hasAllocatedBudget && (
+          <div className="bg-discovery-blue/10 p-2 rounded-lg border border-discovery-blue/20 mb-2">
+            <p className="text-xs font-medium text-discovery-blue">
+              Allocation Applied:{" "}
+              {(debtInvestmentSplit.debt_ratio * 100).toFixed(0)}% of available
+              income
+            </p>
+            <p className="text-xs text-discovery-gold">
+              Debt budget: R{debtBudget.toLocaleString()} of R
+              {debtInvestmentSplit.total_available.toLocaleString()} total
+            </p>
+          </div>
+        )}
+
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-white p-2 rounded-lg border border-discovery-gold/20">
             <p className="text-xs text-black">Available for Debt Payment</p>
             <p className="text-sm font-bold text-black">
-              R{(optimizedAvailable || availableMonthly).toLocaleString()}
+              R{displayBudget.toLocaleString()}
             </p>
-            <p className="text-[10px] text-black">Monthly capacity</p>
+            <p className="text-[10px] text-black">
+              {hasAllocatedBudget ? "Allocated budget" : "Monthly capacity"}
+            </p>
           </div>
           <div className="bg-white p-2 rounded-lg border border-discovery-gold/20">
             <p className="text-xs text-black">Detected Payments</p>
@@ -444,9 +434,7 @@ const Debt = ({
                 strategies
               </p>
               <p className="text-[10px] text-discovery-blue mt-1">
-                Using R
-                {(optimizedAvailable || availableMonthly).toLocaleString()}{" "}
-                available monthly
+                Using R{displayBudget.toLocaleString()} available monthly
               </p>
             </div>
           ) : (
@@ -455,12 +443,12 @@ const Debt = ({
                 <CreditCard className="w-8 h-8 text-discovery-gold mx-auto" />
               </div>
               <h3 className="text-sm font-semibold mb-1 text-discovery-blue">
-                {hasDebtData
+                {hasActualDebts
                   ? "Upload New Debt Statement"
                   : "Upload Debt Statement"}
               </h3>
               <p className="text-xs text-gray-600 mb-2">
-                {hasDebtData
+                {hasActualDebts
                   ? "Analyze different debt information (CSV format)"
                   : debtPayments.length > 0
                   ? "Complete your debt analysis with detailed information"
@@ -483,19 +471,18 @@ const Debt = ({
                 <p className="text-[10px] text-gray-500">
                   CSV format only • Your data is encrypted and secure
                 </p>
-                {(optimizedAvailable || availableMonthly) > 0 && (
+                {displayBudget > 0 && (
                   <p className="text-[10px] text-discovery-blue font-medium">
                     Available for debt payments: R
-                    {(optimizedAvailable || availableMonthly).toLocaleString()}
-                    /month
+                    {displayBudget.toLocaleString()}/month
+                    {hasAllocatedBudget && (
+                      <span className="text-discovery-gold">
+                        {" "}
+                        (Allocated Budget)
+                      </span>
+                    )}
                   </p>
                 )}
-                <div className="flex justify-center space-x-4 text-[10px] text-gray-400">
-                  <span className="flex items-center">
-                    <span className="w-1.5 h-1.5 bg-discovery-gold rounded-full mr-1"></span>
-                    CSV: Direct processing
-                  </span>
-                </div>
               </div>
             </>
           )}
@@ -545,7 +532,7 @@ const Debt = ({
       )}
 
       {/* Debt Analysis Results */}
-      {hasDebtData && (
+      {hasActualDebts && (
         <>
           {/* Before/After Comparison */}
           {minPaymentScenario && currentStrategy && (
@@ -749,7 +736,7 @@ const Debt = ({
                 Based on your financial situation, the{" "}
                 <strong>{backendAnalysis.recommendation}</strong> method is
                 optimal. You'll be debt-free in{" "}
-                <strong>{currentStrategy?.months_to_debt_free} months</strong>
+                <strong>{currentStrategy?.months_to_debt_free} months</strong>{" "}
                 with total interest of{" "}
                 <strong>
                   R{currentStrategy?.total_interest_paid?.toLocaleString()}
@@ -1106,15 +1093,13 @@ Personal Loan,15000.00,0.16,450.00,personal_loan`}
       </div>
 
       {/* No Data State */}
-      {!hasRealData && !hasDebtData && debtPayments.length === 0 && (
+      {!hasRealData && !hasActualDebts && debtPayments.length === 0 && (
         <div className="text-center py-6 text-gray-400">
           <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p className="text-xs mt-1">
             {debtPayments.length > 0
               ? "Debt payments detected - upload debt statement above"
-              : backendAnalysis
-              ? "Sample debt analysis available"
-              : "No debts added yet"}
+              : "No debts detected"}
           </p>
           <p className="text-[10px] mt-0.5">
             {availableMonthly <= 0
@@ -1123,6 +1108,31 @@ Personal Loan,15000.00,0.16,450.00,personal_loan`}
               ? "Enhanced analysis will provide optimal debt strategies when you upload debts"
               : "Upload your debt statement to see personalized payoff strategies"}
           </p>
+        </div>
+      )}
+
+      {/* No Debt Detected State */}
+      {hasRealData && backendAnalysis && !hasActualDebts && (
+        <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+          <div className="text-center">
+            <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
+            <h3 className="text-sm font-semibold text-green-700 mb-1">
+              No Debt Detected
+            </h3>
+            <p className="text-xs text-green-600 mb-2">
+              Great news! Your uploaded statement shows no outstanding debts.
+            </p>
+            <div className="bg-white p-2 rounded-lg border border-green-200">
+              <p className="text-xs text-green-700 font-medium">
+                Your available income: R
+                {(optimizedAvailable || availableMonthly).toLocaleString()}
+                /month
+              </p>
+              <p className="text-[10px] text-green-600 mt-1">
+                Consider investing this amount for your financial future
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>

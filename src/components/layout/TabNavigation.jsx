@@ -41,9 +41,11 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
     { id: "analysis", label: "Analysis", icon: AnalysisIcon },
-    { id: "budget", label: "Budget", icon: BudgetIcon },
+
     { id: "debt", label: "Debt", icon: DebtIcon },
     { id: "investment", label: "Invest", icon: InvestmentIcon },
+
+    { id: "budget", label: "Budget", icon: BudgetIcon },
     { id: "vitality", label: "Vitality", icon: VitalityIcon },
   ];
 

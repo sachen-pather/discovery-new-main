@@ -123,6 +123,51 @@ export const getComprehensiveAnalysis = async (
   });
 };
 
+// NEW: Debt/Investment Split Functions
+export const applySplit = async (
+  totalAvailable,
+  debtRatio,
+  investmentRatio
+) => {
+  return fetchJSON("/apply-debt-investment-split", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      total_available_income: Number(totalAvailable),
+      debt_ratio: Number(debtRatio),
+      investment_ratio: Number(investmentRatio),
+    }),
+  });
+};
+
+export const getCurrentSplit = async () => {
+  try {
+    return await fetchJSON("/current-split");
+  } catch (error) {
+    log("No current split found:", error.message);
+    return { has_split: false };
+  }
+};
+
+export const uploadDebtCSV = async (
+  file,
+  availableMonthly,
+  bankStatementData = null
+) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("available_monthly", String(availableMonthly));
+
+  if (bankStatementData) {
+    formData.append("bank_statement_data", JSON.stringify(bankStatementData));
+  }
+
+  return fetchJSON("/upload-debt-csv", {
+    method: "POST",
+    body: formData,
+  });
+};
+
 export const healthCheck = async () => {
   try {
     const data = await fetchJSON("/health");
@@ -154,6 +199,10 @@ export const apiConfig = {
     debtAnalysis: "/debt-analysis",
     investmentAnalysis: "/investment-analysis",
     comprehensiveAnalysis: "/comprehensive-analysis",
+    // NEW endpoints
+    applySplit: "/apply-debt-investment-split",
+    getCurrentSplit: "/current-split",
+    uploadDebtCSV: "/upload-debt-csv",
     health: "/health",
     enhancedFeatures: "/enhanced-features",
     supportedFormats: "/supported-formats",
@@ -167,6 +216,10 @@ export default {
   getDebtAnalysis,
   getInvestmentAnalysis,
   getComprehensiveAnalysis,
+  // NEW exports
+  applySplit,
+  getCurrentSplit,
+  uploadDebtCSV,
   healthCheck,
   getEnhancedFeatures,
   getApiHealth,

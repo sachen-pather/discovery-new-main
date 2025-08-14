@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 // Remove Chart.js imports, keep Recharts
 import {
   PieChart,
@@ -26,12 +26,89 @@ import {
   TrendingUp,
   ArrowRight,
 } from "lucide-react";
+import { applySplit } from "../../utils/api";
+import SplitSlider from "../ui/SplitSlider";
 
 const Analysis = ({
   financialData = {},
   analysisResults = {},
   realAnalysisResults = null,
+  onSplitApplied = null, // NEW PROP
 }) => {
+  // Split-related state
+  const [showSplitSelector, setShowSplitSelector] = useState(false);
+  const [showCustomSplit, setShowCustomSplit] = useState(false);
+  const [splitRecommendation, setSplitRecommendation] = useState(null);
+
+  // Detect split recommendation from backend data
+  useEffect(() => {
+    if (realAnalysisResults?.recommended_debt_ratio !== undefined) {
+      setSplitRecommendation({
+        debt_ratio: realAnalysisResults.recommended_debt_ratio,
+        investment_ratio: realAnalysisResults.recommended_investment_ratio,
+        rationale: realAnalysisResults.split_rationale,
+        total_available:
+          realAnalysisResults.optimized_available_income ||
+          realAnalysisResults.available_income,
+      });
+      setShowSplitSelector(true);
+    }
+  }, [realAnalysisResults]);
+
+  // Split handler functions
+  const handleApplyRecommendedSplit = async () => {
+    try {
+      const result = await applySplit(
+        splitRecommendation.total_available,
+        splitRecommendation.debt_ratio,
+        splitRecommendation.investment_ratio
+      );
+
+      // Call parent component's handler to update global state
+      if (onSplitApplied) {
+        onSplitApplied({
+          has_split: true,
+          debt_ratio: splitRecommendation.debt_ratio,
+          investment_ratio: splitRecommendation.investment_ratio,
+          debt_budget: result.debt_budget,
+          investment_budget: result.investment_budget,
+          total_available: splitRecommendation.total_available,
+        });
+      }
+
+      setShowSplitSelector(false);
+    } catch (error) {
+      console.error("Failed to apply split:", error);
+    }
+  };
+
+  const handleApplyCustomSplit = async (debtRatio, investmentRatio) => {
+    try {
+      const result = await applySplit(
+        splitRecommendation.total_available,
+        debtRatio,
+        investmentRatio
+      );
+
+      // Call parent component's handler to update global state
+      if (onSplitApplied) {
+        onSplitApplied({
+          has_split: true,
+          debt_ratio: debtRatio,
+          investment_ratio: investmentRatio,
+          debt_budget: result.debt_budget,
+          investment_budget: result.investment_budget,
+          total_available: splitRecommendation.total_available,
+        });
+      }
+
+      setShowSplitSelector(false);
+      setShowCustomSplit(false);
+    } catch (error) {
+      console.error("Failed to apply custom split:", error);
+    }
+  };
+
   const getIconForCategory = (categoryName) => {
     const iconMap = {
       "Rent/Mortgage": <Home className="w-3 h-3 text-blue-600" />,
@@ -110,6 +187,40 @@ const Analysis = ({
         type: t.DebtKind,
         description: t.Description,
       }));
+  };
+
+  // First, create a custom legend component (add this before your Analysis component)
+  const CustomLegend = ({ payload }) => {
+    return (
+      <div className="w-full">
+        <div className="text-xs font-medium text-gray-700 mb-2 border-b border-gray-200 pb-1">
+          Category Breakdown
+        </div>
+        <div className="space-y-1.5">
+          {payload.map((entry, index) => (
+            <div key={index} className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 flex-1 min-w-0">
+                <div
+                  className="w-3 h-3 rounded-sm flex-shrink-0"
+                  style={{ backgroundColor: entry.color }}
+                />
+                <span className="text-xs text-gray-700 truncate">
+                  {entry.value}
+                </span>
+              </div>
+              <div className="flex flex-col items-end ml-2">
+                <span className="text-xs font-medium text-gray-900">
+                  R{entry.payload.value.toLocaleString()}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {entry.payload.percentage}%
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   const generateInsightsFromBackend = (backendData = {}) => {
@@ -224,7 +335,7 @@ const Analysis = ({
 
   const displayData = getDisplayData();
 
-  // NEW: Recharts data preparation
+  // NEW: Recharts data preparation with professional colors
   const getChartData = () => {
     const sortedCategories = [...displayData.categories].sort(
       (a, b) => b.amount - a.amount
@@ -235,7 +346,7 @@ const Analysis = ({
       name: category.name,
       value: category.amount,
       percentage: (category.percentage || 0).toFixed(1),
-      color: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"][
+      color: ["#1e40af", "#d97706", "#059669", "#7c3aed", "#dc2626", "#0891b2"][
         index
       ],
     }));
@@ -333,7 +444,7 @@ const Analysis = ({
         </div>
       </div>
 
-      {/* FIXED: Recharts Pie Chart with Proper Center Text */}
+      {/* UPDATED: Recharts Pie Chart with Professional Colors and Better Legend */}
       <div className="bg-white p-4 rounded-lg border border-discovery-gold/20 shadow-sm">
         <h3 className="text-sm font-semibold mb-2 flex items-center text-discovery-blue">
           <BarChart3 className="w-4 h-4 mr-1 text-discovery-gold" />
@@ -345,7 +456,7 @@ const Analysis = ({
             <PieChart>
               <Pie
                 data={chartData}
-                cx="45%"
+                cx="50%"
                 cy="50%"
                 labelLine={false}
                 label={CustomLabel}
@@ -353,8 +464,8 @@ const Analysis = ({
                 innerRadius={50}
                 fill="#8884d8"
                 dataKey="value"
-                stroke="#ffffff"
-                strokeWidth={1}
+                stroke="none"
+                strokeWidth={0}
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -362,37 +473,20 @@ const Analysis = ({
               </Pie>
               <Tooltip content={<CustomTooltip />} />
               <Legend
+                content={<CustomLegend />}
                 verticalAlign="middle"
                 align="right"
                 layout="vertical"
-                iconType="circle"
                 wrapperStyle={{
                   paddingLeft: "20px",
-                  fontSize: "10px",
-                  lineHeight: "1.2",
-                  width: "40%",
-                  display: "flex",
-                  alignItems: "center",
+                  width: "45%",
+                  fontSize: "12px",
                 }}
-                iconSize={6}
-                formatter={(value, entry) => (
-                  <span
-                    style={{
-                      color: "#374151",
-                      fontSize: "9px",
-                      display: "block",
-                      marginBottom: "2px",
-                      fontWeight: "400",
-                    }}
-                  >
-                    {value} ({entry.payload.percentage}%)
-                  </span>
-                )}
               />
             </PieChart>
           </ResponsiveContainer>
 
-          {/* FIXED: Text moved DOUBLE that left again */}
+          {/* Center text */}
           <div
             className="absolute inset-0 flex items-center pointer-events-none"
             style={{
@@ -412,12 +506,17 @@ const Analysis = ({
         </div>
       </div>
 
-      {/* Detected Debt Payments */}
+      {/* Detected Debt Payments with Split Recommendation */}
       {displayData.debtPayments && displayData.debtPayments.length > 0 && (
         <div className="bg-white p-2 rounded-lg border border-discovery-gold/20 shadow-sm">
           <h3 className="text-xs font-semibold mb-2 flex items-center text-discovery-blue">
             <CreditCard className="w-3 h-3 mr-1 text-discovery-gold" />
             Detected Debt Payments
+            {showSplitSelector && splitRecommendation && (
+              <span className="ml-1 text-[10px] bg-discovery-gold/20 text-discovery-gold px-1 py-0.5 rounded-full">
+                Strategy Available
+              </span>
+            )}
           </h3>
 
           {/* Debt Metrics Summary */}
@@ -480,7 +579,7 @@ const Analysis = ({
           </div>
 
           {/* Individual Debt Payments */}
-          <div className="space-y-1">
+          <div className="space-y-1 mb-2">
             {displayData.debtPayments.map((debt, index) => (
               <div
                 key={index}
@@ -511,6 +610,100 @@ const Analysis = ({
               </div>
             ))}
           </div>
+
+          {/* AI Recommended Financial Strategy */}
+          {showSplitSelector && splitRecommendation && (
+            <div className="mb-2">
+              <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-2 rounded border border-discovery-gold/30">
+                <h4 className="text-[10px] font-semibold mb-1 flex items-center text-discovery-blue">
+                  <Target className="w-2 h-2 mr-1 text-discovery-gold" />
+                  AI Recommended Financial Strategy
+                </h4>
+
+                <p className="text-[10px] text-gray-600 mb-2">
+                  {splitRecommendation.rationale}
+                </p>
+
+                {/* Strategy Allocation Display */}
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="bg-discovery-gold/10 p-1.5 rounded border border-discovery-gold/20">
+                    <p className="text-[10px] text-gray-600">
+                      Investment Focus
+                    </p>
+                    <p className="text-xs font-bold text-discovery-blue-600">
+                      {(splitRecommendation.investment_ratio * 100).toFixed(0)}%
+                    </p>
+                    <p className="text-[10px] font-bold text-discovery-blue-600">
+                      R
+                      {(
+                        splitRecommendation.total_available *
+                        splitRecommendation.investment_ratio
+                      ).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-discovery-blue/10 p-1.5 rounded border border-discovery-gold/20">
+                    <p className="text-[10px] text-gray-600">Debt Focus</p>
+                    <p className="text-xs font-bold text-discovery-blue-600">
+                      {(splitRecommendation.debt_ratio * 100).toFixed(0)}%
+                    </p>
+                    <p className="text-[10px] font-bold text-discovery-blue">
+                      R
+                      {(
+                        splitRecommendation.total_available *
+                        splitRecommendation.debt_ratio
+                      ).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Total Available Display */}
+                <div className="mb-2">
+                  <div className="bg-discovery-blue/10 p-1 rounded border border-discovery-blue/20">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-gray-700">
+                        Total Available for Allocation
+                      </span>
+                      <span className="text-[10px] font-bold text-discovery-blue">
+                        R{splitRecommendation.total_available.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Custom Split Slider */}
+                {showCustomSplit && (
+                  <div className="mb-2">
+                    <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                      <SplitSlider
+                        totalAvailable={splitRecommendation.total_available}
+                        onApply={handleApplyCustomSplit}
+                        onCancel={() => setShowCustomSplit(false)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Strategy Action Buttons */}
+                {!showCustomSplit && (
+                  <div className="space-y-1">
+                    <button
+                      onClick={handleApplyRecommendedSplit}
+                      className="w-full bg-discovery-blue text-white py-1 px-2 rounded text-[10px] hover:bg-discovery-blue/90"
+                    >
+                      Apply Recommended Strategy
+                    </button>
+
+                    <button
+                      onClick={() => setShowCustomSplit(true)}
+                      className="w-full bg-gray-200 text-gray-700 py-1 px-2 rounded text-[10px] hover:bg-gray-300"
+                    >
+                      Customize Split Ratio
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Debt Analysis & Recommendations */}
           <div className="mt-2 space-y-1">
@@ -564,12 +757,15 @@ const Analysis = ({
               return null;
             })()}
 
-            <div className="p-1 bg-discovery-gold/10 rounded border border-discovery-gold/20">
-              <p className="text-[10px] text-discovery-blue font-medium flex items-center">
-                <Sparkles className="w-2 h-2 mr-1" />
-                Upload debt statement for detailed optimization strategies
-              </p>
-            </div>
+            {/* Show upload prompt only if no split recommendation */}
+            {!showSplitSelector && (
+              <div className="p-1 bg-discovery-gold/10 rounded border border-discovery-gold/20">
+                <p className="text-[10px] text-discovery-blue font-medium flex items-center">
+                  <Sparkles className="w-2 h-2 mr-1" />
+                  Upload debt statement for detailed optimization strategies
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

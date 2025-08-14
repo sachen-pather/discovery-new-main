@@ -15,7 +15,12 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
+const Investment = ({
+  financialData,
+  userProfile,
+  realAnalysisResults,
+  debtInvestmentSplit = null, // NEW PROP for split allocation
+}) => {
   const [selectedStrategy, setSelectedStrategy] = useState("moderate");
 
   // Backend analysis results
@@ -23,19 +28,37 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Calculate available investment capacity
+  // Budget calculations - FIXED ORDER: Calculate these FIRST before using them
   const monthlyIncome =
-    realAnalysisResults?.total_income || financialData?.totalIncome || 0;
-  const monthlyExpenses =
-    realAnalysisResults?.total_expenses || financialData?.totalExpenses || 0;
-  const availableMonthly = Math.max(0, monthlyIncome - monthlyExpenses);
+    Number(realAnalysisResults?.total_income) ||
+    Number(financialData?.totalIncome) ||
+    0;
 
-  // Load backend investment analysis on component mount or when available monthly changes
+  const availableMonthly = Number(realAnalysisResults?.available_income) || 0;
+
+  const optimizedAvailable =
+    Number(realAnalysisResults?.optimized_available_income) ||
+    Number(availableMonthly);
+
+  // Split allocation logic - USE the calculated values above
+  const investmentBudget = debtInvestmentSplit?.investment_budget || 0;
+  const hasAllocatedBudget =
+    debtInvestmentSplit?.has_split && investmentBudget > 0;
+  const displayBudget = hasAllocatedBudget
+    ? investmentBudget
+    : optimizedAvailable || availableMonthly;
+
+  const enhancedMode = !!realAnalysisResults?.enhanced_mode;
+
+  // USE FULL AMOUNT for calculations - no 70% reduction
+  const monthlyInvestmentAmount = displayBudget;
+
+  // Load backend investment analysis when budget changes
   useEffect(() => {
-    if (availableMonthly > 0) {
+    if (displayBudget > 0) {
       loadInvestmentAnalysis();
     }
-  }, [availableMonthly]);
+  }, [displayBudget]);
 
   const loadInvestmentAnalysis = async () => {
     setLoading(true);
@@ -43,9 +66,9 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
     try {
       console.log(
         "📄 Loading investment analysis with available monthly:",
-        availableMonthly
+        displayBudget
       );
-      const analysis = await getInvestmentAnalysis(availableMonthly);
+      const analysis = await getInvestmentAnalysis(displayBudget);
       setBackendAnalysis(analysis);
       console.log("✅ Investment analysis loaded:", analysis);
     } catch (err) {
@@ -74,7 +97,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
               : key === "moderate"
               ? BarChart3
               : Shield,
-          color: "bg-gray-200",
+          color: "bg-discovery-gold/20",
           allocation: getDefaultAllocation(key),
           projections: profile.projections,
         };
@@ -90,7 +113,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
         volatility: 0.18,
         description: "High growth potential, high risk",
         icon: TrendingUp,
-        color: "bg-gray-200",
+        color: "bg-discovery-gold/20",
         allocation: { stocks: 85, bonds: 10, cash: 5 },
       },
       moderate: {
@@ -99,7 +122,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
         volatility: 0.12,
         description: "Balanced growth and stability",
         icon: BarChart3,
-        color: "bg-gray-200",
+        color: "bg-discovery-gold/20",
         allocation: { stocks: 60, bonds: 30, cash: 10 },
       },
       conservative: {
@@ -108,7 +131,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
         volatility: 0.06,
         description: "Capital preservation focus",
         icon: Shield,
-        color: "bg-gray-200",
+        color: "bg-discovery-gold/20",
         allocation: { stocks: 30, bonds: 60, cash: 10 },
       },
     };
@@ -172,18 +195,61 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
     }));
   };
 
-  const totalMonthlyContributions = 0; // Default since we removed portfolio tracking
-  const additionalCapacity = Math.max(0, availableMonthly * 0.7); // Invest 70% of available
-
   return (
     <div className="space-y-4">
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-4 rounded-lg border border-discovery-gold/20">
+        <h2 className="text-sm font-bold mb-2 text-black">
+          Investment Management
+        </h2>
+        <p className="text-xs text-black mb-2">
+          Build wealth with AI-optimized investment strategies
+        </p>
+        {realAnalysisResults && (
+          <div className="text-xs text-discovery-gold mb-2 flex items-center">
+            <Sparkles className="w-3 h-3 mr-1" />
+            Based on your real financial data analysis
+          </div>
+        )}
+
+        {/* Split Allocation Indicator */}
+        {hasAllocatedBudget && (
+          <div className="bg-discovery-gold/10 p-2 rounded-lg border border-discovery-gold/20 mb-2">
+            <p className="text-xs font-medium text-discovery-gold">
+              Allocation Applied:{" "}
+              {(debtInvestmentSplit.investment_ratio * 100).toFixed(0)}% of
+              available income
+            </p>
+            <p className="text-xs text-discovery-blue">
+              Investment budget: R{investmentBudget.toLocaleString()} of R
+              {debtInvestmentSplit.total_available.toLocaleString()} total
+            </p>
+          </div>
+        )}
+
+        {/* Investment Budget Display */}
+        <div className="bg-white p-3 rounded-lg border border-discovery-gold/20">
+          <p className="text-xs text-black mb-1">Monthly Investment Amount</p>
+          <p className="text-lg font-bold text-discovery-blue">
+            R{displayBudget.toLocaleString()}
+          </p>
+          <p className="text-[10px] text-gray-600">
+            {hasAllocatedBudget
+              ? "Strategically allocated for investment growth"
+              : "Full available capacity for investment"}
+          </p>
+        </div>
+      </div>
+
       {/* Loading State */}
       {loading && (
         <div className="bg-discovery-blue/10 rounded-lg p-2 border border-discovery-blue/20">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-discovery-blue"></div>
             <span className="text-xs text-discovery-blue">
-              Loading investment analysis...
+              {enhancedMode
+                ? "Loading enhanced investment analysis with AI optimization..."
+                : "Loading investment analysis..."}
             </span>
           </div>
         </div>
@@ -219,13 +285,24 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
             <div className="flex-1">
               <h3 className="text-xs font-semibold text-discovery-blue mb-1">
                 AI Investment Analysis
-                <span className="ml-1 text-[10px] bg-discovery-blue/10 text-discovery-blue px-1 py-0.5 rounded-full">
-                  Enhanced
-                </span>
+                {enhancedMode && (
+                  <span className="ml-1 text-[10px] bg-discovery-blue/10 text-discovery-blue px-1 py-0.5 rounded-full">
+                    Enhanced
+                  </span>
+                )}
               </h3>
               <p className="text-[10px] text-gray-600 mb-2">
-                Based on R{backendAnalysis.monthly_savings?.toLocaleString()}{" "}
-                available monthly
+                Based on R
+                {(
+                  backendAnalysis.monthly_savings || displayBudget
+                )?.toLocaleString()}{" "}
+                monthly investment
+                {hasAllocatedBudget && (
+                  <span className="text-discovery-gold">
+                    {" "}
+                    (Allocated Budget)
+                  </span>
+                )}
               </p>
               {backendAnalysis.recommendations && (
                 <div className="bg-white/80 rounded p-1">
@@ -250,8 +327,9 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
       )}
 
       {/* Fund Strategy Selector */}
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">
+      <div className="bg-white rounded-lg p-4 shadow-sm border border-discovery-gold/20">
+        <h3 className="text-sm font-semibold text-discovery-blue mb-3 flex items-center">
+          <Target className="w-4 h-4 mr-1 text-discovery-gold" />
           Investment Fund Selection
         </h3>
         <div className="grid grid-cols-3 gap-2 mb-4">
@@ -263,12 +341,26 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
                 onClick={() => setSelectedStrategy(key)}
                 className={`p-3 rounded-lg border-2 transition-all ${
                   selectedStrategy === key
-                    ? "border-gray-500 bg-gray-100"
-                    : "border-gray-200 bg-white hover:bg-gray-50"
+                    ? "border-discovery-blue bg-discovery-blue/10"
+                    : "border-discovery-gold/20 bg-white hover:bg-discovery-gold/5"
                 }`}
               >
-                <IconComponent className="w-6 h-6 mx-auto mb-2 text-gray-600" />
-                <p className="text-xs font-medium mt-1">{strategy.name}</p>
+                <IconComponent
+                  className={`w-6 h-6 mx-auto mb-2 ${
+                    selectedStrategy === key
+                      ? "text-discovery-blue"
+                      : "text-discovery-gold"
+                  }`}
+                />
+                <p
+                  className={`text-xs font-medium mt-1 ${
+                    selectedStrategy === key
+                      ? "text-discovery-blue"
+                      : "text-gray-700"
+                  }`}
+                >
+                  {strategy.name}
+                </p>
                 <p className="text-[10px] text-gray-500">
                   {(
                     (strategy.avgReturn || strategy.effectiveReturn || 0) * 100
@@ -281,10 +373,10 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
         </div>
 
         {/* Selected Strategy Details */}
-        <div className="rounded-lg p-3 bg-gray-50 border-l-4 border-gray-500">
+        <div className="rounded-lg p-3 bg-discovery-gold/10 border-l-4 border-discovery-gold">
           <div className="flex items-start justify-between">
             <div>
-              <h4 className="font-medium text-sm text-gray-800">
+              <h4 className="font-medium text-sm text-discovery-blue">
                 {investmentStrategies[selectedStrategy].name} Fund
               </h4>
               <p className="text-xs text-gray-600 mt-1">
@@ -295,7 +387,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
               {React.createElement(
                 investmentStrategies[selectedStrategy].icon,
                 {
-                  className: "w-8 h-8 text-gray-600",
+                  className: "w-8 h-8 text-discovery-gold",
                 }
               )}
             </div>
@@ -303,27 +395,27 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
 
           {/* Strategy Metrics */}
           <div className="grid grid-cols-3 gap-2 mt-3">
-            <div>
+            <div className="bg-white/80 p-2 rounded border border-discovery-gold/20">
               <p className="text-[10px] text-gray-500">Avg Return</p>
-              <p className="text-sm font-bold text-gray-800">
+              <p className="text-sm font-bold text-discovery-blue">
                 {(
                   (investmentStrategies[selectedStrategy].avgReturn || 0) * 100
                 ).toFixed(2)}
                 %
               </p>
             </div>
-            <div>
+            <div className="bg-white/80 p-2 rounded border border-discovery-gold/20">
               <p className="text-[10px] text-gray-500">Volatility (σ)</p>
-              <p className="text-sm font-bold text-gray-800">
+              <p className="text-sm font-bold text-discovery-blue">
                 {(
                   (investmentStrategies[selectedStrategy].volatility || 0) * 100
                 ).toFixed(2)}
                 %
               </p>
             </div>
-            <div>
+            <div className="bg-white/80 p-2 rounded border border-discovery-gold/20">
               <p className="text-[10px] text-gray-500">Effective</p>
-              <p className="text-sm font-bold text-gray-700">
+              <p className="text-sm font-bold text-discovery-gold">
                 {(
                   (investmentStrategies[selectedStrategy].effectiveReturn ||
                     calculateEffectiveReturn(
@@ -355,9 +447,9 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
                       <div
                         className={`h-1.5 rounded-full ${
                           asset === "stocks"
-                            ? "bg-gray-600"
+                            ? "bg-discovery-blue"
                             : asset === "bonds"
-                            ? "bg-gray-500"
+                            ? "bg-discovery-gold"
                             : "bg-gray-400"
                         }`}
                         style={{ width: `${percentage}%` }}
@@ -375,35 +467,39 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
       </div>
 
       {/* Investment Projections */}
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">
+      <div className="bg-white rounded-lg p-4 shadow-sm border border-discovery-gold/20">
+        <h3 className="text-sm font-semibold text-discovery-blue mb-2 flex items-center">
+          <TrendingUp className="w-4 h-4 mr-1 text-discovery-gold" />
           Investment Projections
         </h3>
         <p className="text-xs text-gray-600 mb-3">
           Monthly contribution: R
           {(
-            backendAnalysis?.monthly_savings ||
-            (additionalCapacity > 0
-              ? additionalCapacity
-              : totalMonthlyContributions)
+            backendAnalysis?.monthly_savings || monthlyInvestmentAmount
           ).toLocaleString()}
+          {hasAllocatedBudget && (
+            <span className="text-discovery-gold">
+              {" "}
+              (From Allocation Strategy)
+            </span>
+          )}
         </p>
 
         {/* Projection Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b">
-                <th className="text-left py-2 font-medium text-gray-600">
+              <tr className="border-b border-discovery-gold/20">
+                <th className="text-left py-2 font-medium text-discovery-blue">
                   Years
                 </th>
-                <th className="text-right py-2 font-medium text-gray-600">
+                <th className="text-right py-2 font-medium text-discovery-blue">
                   Future Value
                 </th>
-                <th className="text-right py-2 font-medium text-gray-600">
+                <th className="text-right py-2 font-medium text-discovery-blue">
                   Total Invested
                 </th>
-                <th className="text-right py-2 font-medium text-gray-600">
+                <th className="text-right py-2 font-medium text-discovery-blue">
                   Interest Earned
                 </th>
               </tr>
@@ -411,10 +507,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
             <tbody>
               {generateProjectionTable(
                 investmentStrategies[selectedStrategy],
-                backendAnalysis?.monthly_savings ||
-                  (additionalCapacity > 0
-                    ? additionalCapacity
-                    : totalMonthlyContributions)
+                backendAnalysis?.monthly_savings || monthlyInvestmentAmount
               ).map((projection, index) => {
                 const futureValue =
                   projection.effective_future_value ||
@@ -426,10 +519,12 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
                 return (
                   <tr
                     key={projection.years}
-                    className={index % 2 === 0 ? "bg-gray-50" : ""}
+                    className={index % 2 === 0 ? "bg-discovery-gold/5" : ""}
                   >
-                    <td className="py-2 font-medium">{projection.years}</td>
-                    <td className="text-right py-2 font-bold text-gray-800">
+                    <td className="py-2 font-medium text-discovery-blue">
+                      {projection.years}
+                    </td>
+                    <td className="text-right py-2 font-bold text-discovery-blue">
                       R
                       {futureValue.toLocaleString("en-ZA", {
                         minimumFractionDigits: 0,
@@ -443,7 +538,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
                         maximumFractionDigits: 0,
                       })}
                     </td>
-                    <td className="text-right py-2 text-green-600 font-medium">
+                    <td className="text-right py-2 text-discovery-gold font-medium">
                       R
                       {interestEarned.toLocaleString("en-ZA", {
                         minimumFractionDigits: 0,
@@ -457,8 +552,8 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
           </table>
         </div>
 
-        <div className="mt-3 p-2 bg-gray-100 rounded">
-          <p className="text-[10px] text-gray-700">
+        <div className="mt-3 p-2 bg-discovery-gold/10 rounded border border-discovery-gold/20">
+          <p className="text-[10px] text-discovery-blue">
             <strong>Note:</strong>{" "}
             {backendAnalysis
               ? "Projections from AI analysis. "
@@ -469,18 +564,16 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
       </div>
 
       {/* Fund Comparison */}
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">
+      <div className="bg-white rounded-lg p-4 shadow-sm border border-discovery-gold/20">
+        <h3 className="text-sm font-semibold text-discovery-blue mb-3 flex items-center">
+          <BarChart3 className="w-4 h-4 mr-1 text-discovery-gold" />
           Fund Comparison (20 Year Horizon)
         </h3>
 
         <div className="space-y-2">
           {Object.entries(investmentStrategies).map(([key, strategy]) => {
             const monthlyAmount =
-              backendAnalysis?.monthly_savings ||
-              (additionalCapacity > 0
-                ? additionalCapacity
-                : totalMonthlyContributions);
+              backendAnalysis?.monthly_savings || monthlyInvestmentAmount;
 
             let futureValue = 0;
             if (strategy.projections) {
@@ -511,16 +604,24 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
               <div
                 key={key}
                 className={`rounded-lg p-3 border ${
-                  isSelected ? "border-gray-500 bg-gray-100" : "border-gray-200"
+                  isSelected
+                    ? "border-discovery-blue bg-discovery-blue/10"
+                    : "border-discovery-gold/20 hover:bg-discovery-gold/5"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <IconComponent className="w-5 h-5 text-gray-600" />
+                    <IconComponent
+                      className={`w-5 h-5 ${
+                        isSelected
+                          ? "text-discovery-blue"
+                          : "text-discovery-gold"
+                      }`}
+                    />
                     <div>
                       <p
                         className={`text-xs font-medium ${
-                          isSelected ? "text-gray-800" : "text-gray-700"
+                          isSelected ? "text-discovery-blue" : "text-gray-700"
                         }`}
                       >
                         {strategy.name} Fund
@@ -540,7 +641,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
                   <div className="text-right">
                     <p
                       className={`text-sm font-bold ${
-                        isSelected ? "text-gray-800" : "text-gray-700"
+                        isSelected ? "text-discovery-blue" : "text-gray-700"
                       }`}
                     >
                       R
@@ -558,45 +659,97 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
         </div>
       </div>
 
+      {/* Budget Integration Section */}
+      {Number.isFinite(availableMonthly) && (
+        <div className="bg-gradient-to-r from-discovery-blue/10 to-discovery-gold/10 p-2 rounded-lg border border-discovery-blue/20">
+          <h3 className="text-xs font-semibold text-discovery-blue mb-1 flex items-center">
+            <DollarSign className="w-4 h-4 mr-1" />
+            Budget Integration
+            {enhancedMode && (
+              <span className="ml-1 text-[10px] bg-discovery-blue/10 text-discovery-blue px-1 py-0.5 rounded-full">
+                Enhanced
+              </span>
+            )}
+          </h3>
+          <div className="grid grid-cols-2 gap-2 text-[10px]">
+            <div className="bg-white/80 rounded p-1 border border-discovery-blue/20">
+              <p className="text-gray-600">Available for Investment</p>
+              <p className="text-sm font-bold text-discovery-blue">
+                R{Number(availableMonthly).toLocaleString()}
+              </p>
+            </div>
+            <div className="bg-white/80 rounded p-1 border border-discovery-gold/20">
+              <p className="text-gray-600">With Optimizations</p>
+              <p className="text-sm font-bold text-discovery-gold">
+                R{Number(optimizedAvailable).toLocaleString()}
+              </p>
+            </div>
+          </div>
+          {enhancedMode && (
+            <p className="text-[10px] text-discovery-blue mt-1">
+              Enhanced analysis balances investment growth with essential
+              expenses
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Investment Tips */}
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-          <BookOpen className="w-4 h-4 mr-2" />
+      <div className="bg-white rounded-lg p-4 shadow-sm border border-discovery-gold/20">
+        <h3 className="text-sm font-semibold text-discovery-blue mb-3 flex items-center">
+          <Lightbulb className="w-4 h-4 mr-1 text-discovery-gold" />
           Investment Best Practices
+          {enhancedMode && (
+            <span className="ml-1 text-[10px] bg-discovery-blue/10 text-discovery-blue px-1 py-0.5 rounded-full">
+              Enhanced
+            </span>
+          )}
         </h3>
         <div className="space-y-2">
           <div className="flex items-start space-x-2">
-            <span className="text-xs text-gray-400 mt-0.5">▸</span>
+            <span className="text-xs text-discovery-gold mt-0.5">▸</span>
             <p className="text-xs text-gray-600">
               Stay disciplined with your chosen strategy through market cycles
             </p>
           </div>
           <div className="flex items-start space-x-2">
-            <span className="text-xs text-gray-400 mt-0.5">▸</span>
+            <span className="text-xs text-discovery-gold mt-0.5">▸</span>
             <p className="text-xs text-gray-600">
               Max out your Tax Free Savings Account (R36,000/year limit)
             </p>
           </div>
           <div className="flex items-start space-x-2">
-            <span className="text-xs text-gray-400 mt-0.5">▸</span>
+            <span className="text-xs text-discovery-gold mt-0.5">▸</span>
             <p className="text-xs text-gray-600">
               Dollar-cost averaging: Invest consistently regardless of market
               conditions
             </p>
           </div>
           <div className="flex items-start space-x-2">
-            <span className="text-xs text-gray-400 mt-0.5">▸</span>
+            <span className="text-xs text-discovery-gold mt-0.5">▸</span>
             <p className="text-xs text-gray-600">
               Keep 3-6 months expenses in emergency fund before aggressive
               investing
             </p>
           </div>
           <div className="flex items-start space-x-2">
-            <span className="text-xs text-gray-400 mt-0.5">▸</span>
+            <span className="text-xs text-discovery-gold mt-0.5">▸</span>
             <p className="text-xs text-gray-600">
               Review and rebalance your portfolio quarterly
             </p>
           </div>
+
+          {enhancedMode && (
+            <div className="flex items-start space-x-1 bg-discovery-blue/10 p-1 rounded mt-1 border border-discovery-blue/20">
+              <Sparkles className="w-3 h-3 text-discovery-blue mt-0.5" />
+              <p className="text-[10px] text-discovery-blue">
+                <strong>Enhanced Analysis:</strong> AI modeling considers your
+                risk profile and market conditions for optimized portfolio
+                recommendations.
+              </p>
+            </div>
+          )}
+
           {/* Backend recommendations */}
           {backendAnalysis?.recommendations &&
             backendAnalysis.recommendations.slice(3).map((rec, index) => (
@@ -612,6 +765,74 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
             ))}
         </div>
       </div>
+
+      {/* No Data State */}
+      {!realAnalysisResults && displayBudget <= 0 && (
+        <div className="text-center py-6 text-gray-400">
+          <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-xs mt-1">No investment capacity detected</p>
+          <p className="text-[10px] mt-0.5">
+            Upload your financial data first to see investment opportunities
+          </p>
+        </div>
+      )}
+
+      {/* Low Budget State */}
+      {displayBudget > 0 && displayBudget < 500 && (
+        <div className="bg-discovery-gold/10 rounded-lg p-4 border border-discovery-gold/20">
+          <div className="text-center">
+            <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-discovery-gold" />
+            <h3 className="text-sm font-semibold text-discovery-gold mb-1">
+              Limited Investment Capacity
+            </h3>
+            <p className="text-xs text-gray-600 mb-2">
+              Available budget: R{displayBudget.toLocaleString()}/month
+            </p>
+            <div className="bg-white p-2 rounded-lg border border-discovery-gold/20">
+              <p className="text-xs text-discovery-blue font-medium">
+                Recommendations:
+              </p>
+              <ul className="text-[10px] text-gray-600 mt-1 space-y-0.5">
+                <li>• Focus on debt reduction first</li>
+                <li>• Build emergency fund (R2,000-R5,000)</li>
+                <li>• Consider Tax Free Savings Account</li>
+                <li>• Review expenses for optimization opportunities</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Good Investment Capacity State */}
+      {displayBudget >= 500 && !backendAnalysis && !loading && (
+        <div className="bg-discovery-blue/10 rounded-lg p-4 border border-discovery-blue/20">
+          <div className="text-center">
+            <TrendingUp className="w-8 h-8 mx-auto mb-2 text-discovery-blue" />
+            <h3 className="text-sm font-semibold text-discovery-blue mb-1">
+              Strong Investment Potential
+            </h3>
+            <p className="text-xs text-gray-600 mb-2">
+              Available budget: R{displayBudget.toLocaleString()}/month
+              {hasAllocatedBudget && (
+                <span className="text-discovery-gold">
+                  {" "}
+                  (Strategically Allocated)
+                </span>
+              )}
+            </p>
+            <div className="bg-white p-2 rounded-lg border border-discovery-blue/20">
+              <p className="text-xs text-discovery-blue font-medium">
+                You're ready to build wealth through investing!
+              </p>
+              <p className="text-[10px] text-gray-600 mt-1">
+                {hasAllocatedBudget
+                  ? "Your debt/investment split strategy provides optimal allocation for growth"
+                  : "Consider applying a debt/investment strategy for balanced financial growth"}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

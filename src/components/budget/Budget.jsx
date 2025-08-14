@@ -11,7 +11,12 @@ import {
   Info,
 } from "lucide-react";
 
-const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
+const Budget = ({
+  financialData,
+  userProfile,
+  realAnalysisResults,
+  debtInvestmentSplit = null, // NEW PROP - shows investment values when split is active
+}) => {
   const potentialMonthlySavings = realAnalysisResults
     ? Object.values(realAnalysisResults.suggestions).reduce(
         (sum, s) => sum + (s.potential_savings || 0),
@@ -22,10 +27,21 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
   const currentAvailable = realAnalysisResults
     ? realAnalysisResults.available_income
     : financialData.disposableIncome;
+
   const optimizedAvailable = currentAvailable + potentialMonthlySavings;
+
   const totalIncome = realAnalysisResults
     ? realAnalysisResults.total_income
     : financialData.totalIncome;
+
+  // SPLIT LOGIC - Use investment budget when split is active, otherwise use normal values
+  const hasActiveSplit = debtInvestmentSplit?.has_split;
+  const displayAvailable = hasActiveSplit
+    ? debtInvestmentSplit.investment_budget // SHOW INVESTMENT BUDGET
+    : currentAvailable;
+  const displayOptimized = hasActiveSplit
+    ? debtInvestmentSplit.investment_budget // SHOW INVESTMENT BUDGET
+    : optimizedAvailable;
 
   // Use backend annuity data if available
   const annuityData = realAnalysisResults?.annuity_projection;
@@ -87,14 +103,34 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
     <div className="space-y-4">
       {/* Budget Overview */}
       <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-4 rounded-lg border border-discovery-gold/20">
-        <h2 className="text-sm font-bold mb-2 text-black">Budget Management</h2>
+        <h2 className="text-sm font-bold mb-2 text-black">
+          {hasActiveSplit ? "Investment Budget" : "Budget Management"}
+        </h2>
         <p className="text-xs text-black mb-2">
-          Track your spending and optimize your budget
+          {hasActiveSplit
+            ? "Track your allocated investment budget and growth potential"
+            : "Track your spending and optimize your budget"}
         </p>
         {realAnalysisResults && (
           <div className="text-xs text-discovery-gold mb-2 flex items-center">
             <Sparkles className="w-3 h-3 mr-1" />
             Based on your real financial data analysis
+          </div>
+        )}
+
+        {/* SPLIT INDICATOR */}
+        {hasActiveSplit && (
+          <div className="bg-discovery-gold/10 p-2 rounded-lg border border-discovery-gold/20 mb-2">
+            <p className="text-xs font-medium text-discovery-gold">
+              Investment Allocation:{" "}
+              {(debtInvestmentSplit.investment_ratio * 100).toFixed(0)}% of
+              available income
+            </p>
+            <p className="text-[10px] text-gray-600 mt-1">
+              R{debtInvestmentSplit.investment_budget.toLocaleString()} of R
+              {debtInvestmentSplit.total_available.toLocaleString()} total
+              allocated to investments
+            </p>
           </div>
         )}
 
@@ -107,17 +143,23 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
             <p className="text-[10px] text-black">Total available</p>
           </div>
           <div className="bg-white p-2 rounded-lg border border-discovery-gold/20">
-            <p className="text-xs text-black">Available to Save</p>
-            <p className="text-sm font-bold text-black">
-              R{currentAvailable.toLocaleString()}
+            <p className="text-xs text-black">
+              {hasActiveSplit ? "Investment Budget" : "Available to Save"}
             </p>
-            <p className="text-[10px] text-black">Current savings potential</p>
+            <p className="text-sm font-bold text-black">
+              R{displayAvailable.toLocaleString()}
+            </p>
+            <p className="text-[10px] text-black">
+              {hasActiveSplit
+                ? "Allocated for investments"
+                : "Current savings potential"}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Optimization Summary */}
-      {potentialMonthlySavings > 0 && (
+      {/* Optimization Summary - Only show when no split is active */}
+      {potentialMonthlySavings > 0 && !hasActiveSplit && (
         <div className="bg-white p-4 rounded-lg border border-discovery-gold/20 shadow-sm">
           <h3 className="text-sm font-semibold mb-2 text-discovery-blue flex items-center">
             <Target className="w-4 h-4 mr-1 text-discovery-gold" />
@@ -147,28 +189,34 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
       {/* Scenario Analysis */}
       <div className="bg-white p-4 rounded-lg border border-discovery-gold/20 shadow-sm">
         <h3 className="text-sm font-semibold mb-2 text-discovery-blue">
-          Scenario Analysis
+          {hasActiveSplit
+            ? "Investment Growth Projections"
+            : "Scenario Analysis"}
         </h3>
         <p className="text-xs text-gray-600 mb-2">
-          See how your savings could grow over time with compound interest
+          See how your {hasActiveSplit ? "investment allocation" : "savings"}{" "}
+          could grow over time with compound interest
         </p>
-        {annuityData && (
+        {annuityData && !hasActiveSplit && (
           <div className="text-xs text-discovery-gold mb-2 flex items-center">
             <BarChart3 className="w-3 h-3 mr-1" />
             Calculations without using the AI optimizations
           </div>
         )}
 
-        {/* Scenario A: Current Savings */}
-        {currentAvailable > 0 && (
+        {/* Scenario A: Current/Investment Budget */}
+        {displayAvailable > 0 && (
           <div className="mb-4">
             <div className="bg-discovery-blue/10 p-2 rounded-lg mb-2">
               <h4 className="font-semibold text-discovery-blue mb-1 text-xs">
-                Scenario A: Current Available Income (R
-                {currentAvailable.toLocaleString()}/month)
+                {hasActiveSplit
+                  ? `Investment Growth: R${displayAvailable.toLocaleString()}/month`
+                  : `Scenario A: Current Available Income (R${displayAvailable.toLocaleString()}/month)`}
               </h4>
               <p className="text-xs text-gray-600">
-                Based on your current spending patterns
+                {hasActiveSplit
+                  ? "Growth potential of your strategic investment allocation"
+                  : "Based on your current spending patterns"}
               </p>
             </div>
 
@@ -180,20 +228,22 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
                       Years
                     </th>
                     <th className="text-right py-2 text-discovery-blue">
-                      Total Saved
+                      Total {hasActiveSplit ? "Invested" : "Saved"}
                     </th>
                     <th className="text-right py-2 text-discovery-blue">
                       Final Value
                     </th>
                     <th className="text-right py-2 text-discovery-blue">
-                      Interest Earned
+                      {hasActiveSplit
+                        ? "Investment Returns"
+                        : "Interest Earned"}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {scenarioData.map((row, idx) => {
                     const { totalSaved, finalValue, interest } =
-                      calculateCompoundGrowth(currentAvailable, row.years);
+                      calculateCompoundGrowth(displayAvailable, row.years);
 
                     return (
                       <tr key={idx} className="border-b border-gray-100">
@@ -216,8 +266,8 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
           </div>
         )}
 
-        {/* Scenario B: Optimized Savings */}
-        {potentialMonthlySavings > 0 && (
+        {/* Scenario B: Optimized Savings - only show if no split is active */}
+        {potentialMonthlySavings > 0 && !hasActiveSplit && (
           <div className="mb-4">
             <div className="bg-discovery-gold/10 p-2 rounded-lg mb-2">
               <h4 className="font-semibold text-discovery-gold mb-1 text-xs">
@@ -291,25 +341,25 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
         <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-2 rounded-lg mb-2">
           <h4 className="font-semibold text-discovery-blue mb-2 flex items-center text-xs">
             <TrendingUp className="w-3 h-3 mr-1" />
-            Key Insights:
+            Key {hasActiveSplit ? "Investment" : ""} Insights:
           </h4>
           <div className="space-y-2 text-xs">
-            {currentAvailable > 0 && (
+            {displayAvailable > 0 && (
               <>
                 <div className="flex items-start px-2">
                   <div className="w-1.5 h-1.5 bg-discovery-gold rounded-full mt-1 mr-2"></div>
                   <p className="text-xs">
                     After 10 years: You'll have R
                     {calculateCompoundGrowth(
-                      currentAvailable,
+                      displayAvailable,
                       10
                     ).finalValue.toLocaleString()}{" "}
                     (R
                     {calculateCompoundGrowth(
-                      currentAvailable,
+                      displayAvailable,
                       10
                     ).interest.toLocaleString()}{" "}
-                    in interest)
+                    in {hasActiveSplit ? "investment returns" : "interest"})
                   </p>
                 </div>
                 <div className="flex items-start px-2">
@@ -317,27 +367,38 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
                   <p className="text-xs">
                     After 20 years: You'll have R
                     {calculateCompoundGrowth(
-                      currentAvailable,
+                      displayAvailable,
                       20
                     ).finalValue.toLocaleString()}{" "}
                     (R
                     {calculateCompoundGrowth(
-                      currentAvailable,
+                      displayAvailable,
                       20
                     ).interest.toLocaleString()}{" "}
-                    in interest)
+                    in {hasActiveSplit ? "investment returns" : "interest"})
                   </p>
                 </div>
                 <div className="flex items-start px-2">
                   <div className="w-1.5 h-1.5 bg-discovery-gold rounded-full mt-1 mr-2"></div>
                   <p className="text-xs">
                     Your money grows 2.4x from year 10 to year 20 due to
-                    compound interest!
+                    compound {hasActiveSplit ? "returns" : "interest"}!
                   </p>
                 </div>
               </>
             )}
-            {potentialMonthlySavings > 0 && (
+            {hasActiveSplit && (
+              <div className="flex items-start px-2">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1 mr-2"></div>
+                <p className="text-xs">
+                  <strong>Strategic Investment Allocation:</strong> This shows
+                  your dedicated investment budget growth, while your debt
+                  allocation is handled separately for optimal financial
+                  balance.
+                </p>
+              </div>
+            )}
+            {potentialMonthlySavings > 0 && !hasActiveSplit && (
               <div className="flex items-start px-2">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1 mr-2"></div>
                 <p className="text-xs">
@@ -360,7 +421,7 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
             Calculation Assumptions:
           </h4>
           <div className="text-[10px] text-gray-600 space-y-1">
-            <p>• 6.75% annual return (compounded monthly)</p>
+            <p>• 8% annual return (compounded monthly)</p>
             <p>• Fixed monthly contributions at month-end</p>
             <p>
               • No taxes considered (use TFSA or retirement annuity for tax
@@ -371,6 +432,12 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
               • Inflation not factored in - consider 6% inflation for real
               returns
             </p>
+            {hasActiveSplit && (
+              <p>
+                • Shows investment allocation growth - debt allocations handled
+                separately
+              </p>
+            )}
             {annuityData && (
               <p>• Backend calculations ensure accuracy and consistency</p>
             )}
@@ -391,7 +458,8 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
                 Current Status: {userProfile.vitalityStatus}
               </p>
               <p className="text-[10px] text-gray-600">
-                Budget management contributes to Vitality points
+                {hasActiveSplit ? "Investment planning" : "Budget management"}{" "}
+                contributes to Vitality points
               </p>
             </div>
             <div className="text-right">
@@ -406,8 +474,9 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
               Vitality Benefit
             </p>
             <p className="text-[10px] text-gray-600">
-              Maintaining a healthy budget earns Vitality points, reducing your
-              medical aid costs by up to 25%
+              {hasActiveSplit
+                ? "Strategic investment planning earns Vitality points, reducing your medical aid costs by up to 25%. Your balanced debt/investment approach maximizes both financial and health benefits!"
+                : "Maintaining a healthy budget earns Vitality points, reducing your medical aid costs by up to 25%"}
             </p>
           </div>
         </div>

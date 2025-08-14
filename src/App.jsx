@@ -16,7 +16,8 @@ import {
   uploadPDF,
   getDebtAnalysis,
   getInvestmentAnalysis,
-} from "./utils/api"; // Add the new imports
+  getCurrentSplit, // FIX: Add missing import
+} from "./utils/api";
 import Vitality from "./components/vitality/Vitality";
 import Investment from "./components/investment/Investment";
 
@@ -30,6 +31,7 @@ const App = () => {
   const [loginError, setLoginError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [debtAnalysisResults, setDebtAnalysisResults] = useState(null);
+
   // App state
   const [activeTab, setActiveTab] = useState("dashboard");
   const [bankStatement, setBankStatement] = useState(null);
@@ -51,6 +53,16 @@ const App = () => {
   const [notifications, setNotifications] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
+
+  // FIX: Add split state management
+  const [debtInvestmentSplit, setDebtInvestmentSplit] = useState({
+    has_split: false,
+    debt_ratio: 0,
+    investment_ratio: 0,
+    debt_budget: 0,
+    investment_budget: 0,
+    total_available: 0,
+  });
 
   // User profile and settings
   const [userProfile, setUserProfile] = useState({
@@ -183,13 +195,19 @@ const App = () => {
     try {
       console.log("🔄 Loading debt and investment analysis for ChatBot...");
 
-      // Load debt analysis
+      // Load debt analysis - this will fail if no debt data exists, which is correct
       try {
         const debtResult = await getDebtAnalysis(analysisData.available_income);
         setDebtAnalysis(debtResult);
+        setDebtAnalysisResults(debtResult);
         console.log("✅ Debt analysis loaded for ChatBot:", debtResult);
-      } catch (error) {
-        console.error("❌ Error loading debt analysis for ChatBot:", error);
+      } catch (debtError) {
+        console.log(
+          "ℹ️ No debt analysis available for ChatBot:",
+          debtError.message
+        );
+        // Don't set debtAnalysisResults here - leave it as null when no debt data exists
+        setDebtAnalysis(null);
       }
 
       // Load investment analysis
@@ -301,6 +319,49 @@ const App = () => {
     return insights.slice(0, 5); // Limit to 5 insights
   };
 
+  // FIX: Add split management useEffect
+  useEffect(() => {
+    const loadCurrentSplit = async () => {
+      try {
+        const splitData = await getCurrentSplit();
+        if (splitData.has_split) {
+          setDebtInvestmentSplit({
+            has_split: true,
+            debt_ratio: splitData.split.debt_ratio,
+            investment_ratio: splitData.split.investment_ratio,
+            debt_budget: splitData.split.debt_budget,
+            investment_budget: splitData.split.investment_budget,
+            total_available: splitData.split.total_available,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load current split:", error);
+      }
+    };
+
+    loadCurrentSplit();
+  }, []);
+
+  // FIX: Add split handler
+  const handleSplitApplied = (newSplit) => {
+    setDebtInvestmentSplit(newSplit);
+  };
+
+  // FIX: Update function to clear splits
+  const handleNewFinancialDataUploaded = (newData) => {
+    setRealAnalysisResults(newData);
+
+    // Clear any existing split allocation
+    setDebtInvestmentSplit({
+      has_split: false,
+      debt_ratio: 0,
+      investment_ratio: 0,
+      debt_budget: 0,
+      investment_budget: 0,
+      total_available: 0,
+    });
+  };
+
   // Add notifications on app load
   useEffect(() => {
     if (isAuthenticated) {
@@ -374,6 +435,11 @@ const App = () => {
         return;
       }
 
+      // ✅ CRITICAL FIX: Clear debt analysis when uploading new financial statement
+      setDebtAnalysisResults(null);
+      setDebtAnalysis(null);
+      console.log("🧹 Cleared debt analysis results on new file upload");
+
       setBankStatement(file);
       setIsAnalyzing(true);
 
@@ -389,8 +455,8 @@ const App = () => {
           analysisData = await uploadPDF(file);
         }
 
-        // Process the response and update state
-        setRealAnalysisResults(analysisData);
+        // FIX: Use the updated function
+        handleNewFinancialDataUploaded(analysisData);
 
         // Update financial data with real results
         setFinancialData({
@@ -593,13 +659,7 @@ const App = () => {
                   financialData={financialData}
                   analysisResults={analysisResults}
                   realAnalysisResults={realAnalysisResults}
-                />
-              )}
-              {activeTab === "budget" && (
-                <Budget
-                  financialData={financialData}
-                  userProfile={userProfile}
-                  realAnalysisResults={realAnalysisResults}
+                  onSplitApplied={handleSplitApplied} // FIX: Add missing prop
                 />
               )}
               {activeTab === "debt" && (
@@ -609,6 +669,7 @@ const App = () => {
                   realAnalysisResults={realAnalysisResults}
                   debtAnalysisResults={debtAnalysisResults}
                   setDebtAnalysisResults={setDebtAnalysisResults}
+                  debtInvestmentSplit={debtInvestmentSplit} // NEW PROP
                 />
               )}
               {activeTab === "investment" && (
@@ -616,6 +677,15 @@ const App = () => {
                   financialData={financialData}
                   userProfile={userProfile}
                   realAnalysisResults={realAnalysisResults}
+                  debtInvestmentSplit={debtInvestmentSplit} // NEW PROP
+                />
+              )}
+              {activeTab === "budget" && (
+                <Budget
+                  financialData={financialData}
+                  userProfile={userProfile}
+                  realAnalysisResults={realAnalysisResults}
+                  debtInvestmentSplit={debtInvestmentSplit} // ADD THIS LINE
                 />
               )}
               {activeTab === "vitality" && (

@@ -45,179 +45,195 @@ const ChatBot = ({
     }
   }, [chatMessages]);
 
-  // Prepare comprehensive financial context for AI
+  // Prepare comprehensive financial context for AI - WITH SAFE PROPERTY ACCESS
   const getComprehensiveFinancialContext = () => {
     let context = {};
 
-    // Budget/Spending Analysis
+    // Budget/Spending Analysis - WITH SAFE PROPERTY ACCESS
     if (hasFinancialData) {
-      const savingsRate = (
-        (realAnalysisResults.available_income /
-          realAnalysisResults.total_income) *
-        100
-      ).toFixed(1);
+      const totalIncome = realAnalysisResults?.total_income || 0;
+      const availableIncome = realAnalysisResults?.available_income || 0;
 
-      // Enhanced category breakdown with detailed insights
-      const categoryDetails = Object.entries(
-        realAnalysisResults.category_breakdown
-      )
-        .filter(([_, data]) => data.amount > 0)
+      const savingsRate =
+        totalIncome > 0
+          ? ((availableIncome / totalIncome) * 100).toFixed(1)
+          : "0.0";
+
+      // Enhanced category breakdown with detailed insights - SAFE ACCESS
+      const categoryBreakdown = realAnalysisResults?.category_breakdown || {};
+      const categoryDetails = Object.entries(categoryBreakdown)
+        .filter(([_, data]) => (data?.amount || 0) > 0)
         .map(
           ([name, data]) =>
-            `${name}: R${data.amount.toLocaleString()} (${data.percentage.toFixed(
-              1
-            )}%, ${data.count} transactions)`
+            `${name}: R${(data?.amount || 0).toLocaleString()} (${(
+              data?.percentage || 0
+            ).toFixed(1)}%, ${data?.count || 0} transactions)`
         )
         .join(", ");
 
-      const potentialSavings = Object.values(
-        realAnalysisResults.suggestions
-      ).reduce((sum, s) => sum + (s.potential_savings || 0), 0);
+      const suggestions = realAnalysisResults?.suggestions || {};
+      const potentialSavings = Object.values(suggestions).reduce(
+        (sum, s) => sum + (s?.potential_savings || 0),
+        0
+      );
 
-      // Detailed suggestions breakdown
-      const suggestionDetails = Object.entries(realAnalysisResults.suggestions)
-        .filter(([_, data]) => data.potential_savings > 50) // Only significant savings
+      // Detailed suggestions breakdown - SAFE ACCESS
+      const suggestionDetails = Object.entries(suggestions)
+        .filter(([_, data]) => (data?.potential_savings || 0) > 50) // Only significant savings
         .map(
           ([category, data]) =>
-            `${category}: Could save R${data.potential_savings.toFixed(
+            `${category}: Could save R${(data?.potential_savings || 0).toFixed(
               0
-            )}/month - ${data.suggestions[0]}`
+            )}/month - ${data?.suggestions?.[0] || "No details"}`
         )
         .join("; ");
 
-      // Detected debt payments
+      // Detected debt payments - SAFE ACCESS
+      const transactions = realAnalysisResults?.transactions || [];
       const debtPayments =
-        realAnalysisResults.transactions
-          ?.filter((t) => t.IsDebtPayment)
-          ?.map(
+        transactions
+          .filter((t) => t?.IsDebtPayment)
+          .map(
             (t) =>
-              `${t.DebtName}: R${Math.abs(t["Amount (ZAR)"])} (${t.DebtKind})`
+              `${t?.DebtName || "Unknown"}: R${Math.abs(
+                t?.["Amount (ZAR)"] || 0
+              )} (${t?.DebtKind || "Unknown"})`
           )
           .join(", ") || "None detected";
 
       context.budget = {
-        monthlyIncome: realAnalysisResults.total_income,
-        monthlyExpenses: realAnalysisResults.total_expenses,
-        availableIncome: realAnalysisResults.available_income,
+        monthlyIncome: totalIncome,
+        monthlyExpenses: realAnalysisResults?.total_expenses || 0,
+        availableIncome: availableIncome,
         optimizedAvailableIncome:
-          realAnalysisResults.optimized_available_income,
+          realAnalysisResults?.optimized_available_income || availableIncome,
         savingsRate: savingsRate,
         categoryBreakdown: categoryDetails,
         potentialMonthlySavings: potentialSavings,
         detailedSuggestions: suggestionDetails,
-        transactionCount: Object.values(
-          realAnalysisResults.category_breakdown
-        ).reduce((sum, cat) => sum + cat.count, 0),
-        enhancedMode: realAnalysisResults.enhanced_mode,
+        transactionCount: Object.values(categoryBreakdown).reduce(
+          (sum, cat) => sum + (cat?.count || 0),
+          0
+        ),
+        enhancedMode: realAnalysisResults?.enhanced_mode || false,
         detectedDebtPayments: debtPayments,
         hasDetectedDebtPayments: hasDetectedDebtPayments,
         needsDebtStatement: needsDebtStatement,
-        largestExpenseCategories: Object.entries(
-          realAnalysisResults.category_breakdown
-        )
-          .filter(([_, data]) => data.amount > 0)
-          .sort((a, b) => b[1].amount - a[1].amount)
+        largestExpenseCategories: Object.entries(categoryBreakdown)
+          .filter(([_, data]) => (data?.amount || 0) > 0)
+          .sort((a, b) => (b[1]?.amount || 0) - (a[1]?.amount || 0))
           .slice(0, 3)
-          .map(([name, data]) => `${name} (R${data.amount.toLocaleString()})`)
+          .map(
+            ([name, data]) =>
+              `${name} (R${(data?.amount || 0).toLocaleString()})`
+          )
           .join(", "),
       };
     }
 
-    // Enhanced Debt Analysis
+    // Enhanced Debt Analysis - WITH SAFE PROPERTY ACCESS
     if (hasDebtData) {
-      const recommendedStrategy = debtAnalysis.recommendation || "avalanche";
-      const strategy = debtAnalysis[recommendedStrategy];
+      const recommendedStrategy = debtAnalysis?.recommendation || "avalanche";
+      const strategy = debtAnalysis?.[recommendedStrategy] || {};
       const alternativeStrategy =
         recommendedStrategy === "avalanche" ? "snowball" : "avalanche";
-      const altStrategy = debtAnalysis[alternativeStrategy];
+      const altStrategy = debtAnalysis?.[alternativeStrategy] || {};
 
-      // Calculate minimum payment scenario for comparison
-      const totalBalance =
-        debtAnalysis.debts_uploaded?.reduce(
-          (sum, debt) => sum + debt.balance,
-          0
-        ) || 0;
-      const totalMinPayments =
-        debtAnalysis.debts_uploaded?.reduce(
-          (sum, debt) => sum + debt.min_payment,
-          0
-        ) || 0;
+      // Calculate minimum payment scenario for comparison - SAFE ACCESS
+      const debtsUploaded = debtAnalysis?.debts_uploaded || [];
+      const totalBalance = debtsUploaded.reduce(
+        (sum, debt) => sum + (debt?.balance || 0),
+        0
+      );
+      const totalMinPayments = debtsUploaded.reduce(
+        (sum, debt) => sum + (debt?.min_payment || 0),
+        0
+      );
 
       context.debt = {
         recommendedStrategy: recommendedStrategy,
-        monthsToDebtFree: strategy?.months_to_debt_free,
-        totalInterestPaid: strategy?.total_interest_paid,
-        interestSaved: strategy?.interest_saved_vs_min_only,
-        totalDebts: debtAnalysis.debts_uploaded?.length || 0,
+        monthsToDebtFree: strategy?.months_to_debt_free || 0,
+        totalInterestPaid: strategy?.total_interest_paid || 0,
+        interestSaved: strategy?.interest_saved_vs_min_only || 0,
+        totalDebts: debtsUploaded.length,
         payoffOrder: strategy?.payoff_order || [],
         totalDebtAmount: totalBalance,
         monthlyPayments: totalMinPayments,
         additionalBudget: strategy?.additional_budget || 0,
-        debtDetails:
-          debtAnalysis.debts_uploaded
-            ?.map(
-              (debt) =>
-                `${debt.name}: R${debt.balance.toLocaleString()} at ${(
-                  debt.apr * 100
-                ).toFixed(1)}% (min: R${debt.min_payment})`
-            )
-            .join("; ") || "",
+        debtDetails: debtsUploaded
+          .map(
+            (debt) =>
+              `${debt?.name || "Unknown"}: R${(
+                debt?.balance || 0
+              ).toLocaleString()} at ${((debt?.apr || 0) * 100).toFixed(
+                1
+              )}% (min: R${debt?.min_payment || 0})`
+          )
+          .join("; "),
         avalancheVsSnowball: {
           avalanche: {
-            months: debtAnalysis.avalanche?.months_to_debt_free,
-            interestSaved: debtAnalysis.avalanche?.interest_saved_vs_min_only,
-            totalInterest: debtAnalysis.avalanche?.total_interest_paid,
+            months: debtAnalysis?.avalanche?.months_to_debt_free || 0,
+            interestSaved:
+              debtAnalysis?.avalanche?.interest_saved_vs_min_only || 0,
+            totalInterest: debtAnalysis?.avalanche?.total_interest_paid || 0,
           },
           snowball: {
-            months: debtAnalysis.snowball?.months_to_debt_free,
-            interestSaved: debtAnalysis.snowball?.interest_saved_vs_min_only,
-            totalInterest: debtAnalysis.snowball?.total_interest_paid,
+            months: debtAnalysis?.snowball?.months_to_debt_free || 0,
+            interestSaved:
+              debtAnalysis?.snowball?.interest_saved_vs_min_only || 0,
+            totalInterest: debtAnalysis?.snowball?.total_interest_paid || 0,
           },
         },
         strategyComparison: `${recommendedStrategy} method: ${
-          strategy?.months_to_debt_free
-        } months, R${strategy?.total_interest_paid?.toLocaleString()} interest vs ${alternativeStrategy} method: ${
-          altStrategy?.months_to_debt_free
-        } months, R${altStrategy?.total_interest_paid?.toLocaleString()} interest`,
+          strategy?.months_to_debt_free || 0
+        } months, R${(
+          strategy?.total_interest_paid || 0
+        ).toLocaleString()} interest vs ${alternativeStrategy} method: ${
+          altStrategy?.months_to_debt_free || 0
+        } months, R${(
+          altStrategy?.total_interest_paid || 0
+        ).toLocaleString()} interest`,
       };
     }
 
-    // Enhanced Investment Analysis
+    // Enhanced Investment Analysis - WITH SAFE PROPERTY ACCESS
     if (hasInvestmentData) {
-      const monthlySavings = investmentAnalysis.monthly_savings;
+      const monthlySavings = investmentAnalysis?.monthly_savings || 0;
+      const profiles = investmentAnalysis?.profiles || {};
 
-      // Extract detailed projections for each strategy
-      const strategyProjections = Object.entries(investmentAnalysis.profiles)
+      // Extract detailed projections for each strategy - SAFE ACCESS
+      const strategyProjections = Object.entries(profiles)
         .map(([strategy, data]) => {
-          const projection10 = data.projections?.find((p) => p.years === 10);
-          const projection20 = data.projections?.find((p) => p.years === 20);
-          return `${strategy}: 10yr=R${
-            projection10?.effective_future_value?.toLocaleString() || "N/A"
-          }, 20yr=R${
-            projection20?.effective_future_value?.toLocaleString() || "N/A"
-          }`;
+          const projections = data?.projections || [];
+          const projection10 = projections.find((p) => p?.years === 10);
+          const projection20 = projections.find((p) => p?.years === 20);
+          return `${strategy}: 10yr=R${(
+            projection10?.effective_future_value || 0
+          ).toLocaleString()}, 20yr=R${(
+            projection20?.effective_future_value || 0
+          ).toLocaleString()}`;
         })
         .join("; ");
 
       context.investment = {
         monthlySavings: monthlySavings,
-        strategies: Object.keys(investmentAnalysis.profiles).join(", "),
-        recommendations: investmentAnalysis.recommendations || [],
+        strategies: Object.keys(profiles).join(", "),
+        recommendations: investmentAnalysis?.recommendations || [],
         strategyProjections: strategyProjections,
         projections: {
-          conservative:
-            investmentAnalysis.profiles.conservative?.projections?.find(
-              (p) => p.years === 10
-            ),
-          moderate: investmentAnalysis.profiles.moderate?.projections?.find(
-            (p) => p.years === 10
+          conservative: profiles?.conservative?.projections?.find(
+            (p) => p?.years === 10
           ),
-          aggressive: investmentAnalysis.profiles.aggressive?.projections?.find(
-            (p) => p.years === 10
+          moderate: profiles?.moderate?.projections?.find(
+            (p) => p?.years === 10
+          ),
+          aggressive: profiles?.aggressive?.projections?.find(
+            (p) => p?.years === 10
           ),
         },
-        detailedRecommendations:
-          investmentAnalysis.recommendations?.join("; ") || "",
+        detailedRecommendations: (
+          investmentAnalysis?.recommendations || []
+        ).join("; "),
       };
     }
 
@@ -233,25 +249,29 @@ USER PROFILE:
 - Age: ${userProfile.age}
 - Risk Tolerance: ${userProfile.riskTolerance}`;
 
-    // Add budget context if available
+    // Add budget context if available - WITH SAFE PROPERTY ACCESS
     if (context.budget) {
       prompt += `
 
 COMPREHENSIVE BUDGET ANALYSIS FROM USER'S BANK STATEMENT:
-- Monthly Income: R${context.budget.monthlyIncome.toLocaleString()}
-- Monthly Expenses: R${context.budget.monthlyExpenses.toLocaleString()}
-- Available Income: R${context.budget.availableIncome.toLocaleString()}
-- Optimized Available Income: R${
-        context.budget.optimizedAvailableIncome?.toLocaleString() || "N/A"
-      }
-- Savings Rate: ${context.budget.savingsRate}%
+- Monthly Income: R${(context.budget.monthlyIncome || 0).toLocaleString()}
+- Monthly Expenses: R${(context.budget.monthlyExpenses || 0).toLocaleString()}
+- Available Income: R${(context.budget.availableIncome || 0).toLocaleString()}
+- Optimized Available Income: R${(
+        context.budget.optimizedAvailableIncome || 0
+      ).toLocaleString()}
+- Savings Rate: ${context.budget.savingsRate || 0}%
 - Enhanced Mode: ${context.budget.enhancedMode ? "Yes" : "No"}
-- Transactions Analyzed: ${context.budget.transactionCount}
-- Largest Expense Categories: ${context.budget.largestExpenseCategories}
-- Detailed Spending: ${context.budget.categoryBreakdown}
-- Potential Monthly Savings: R${context.budget.potentialMonthlySavings.toLocaleString()}
-- Optimization Suggestions: ${context.budget.detailedSuggestions}
-- Detected Debt Payments: ${context.budget.detectedDebtPayments}
+- Transactions Analyzed: ${context.budget.transactionCount || 0}
+- Largest Expense Categories: ${
+        context.budget.largestExpenseCategories || "N/A"
+      }
+- Detailed Spending: ${context.budget.categoryBreakdown || "N/A"}
+- Potential Monthly Savings: R${(
+        context.budget.potentialMonthlySavings || 0
+      ).toLocaleString()}
+- Optimization Suggestions: ${context.budget.detailedSuggestions || "N/A"}
+- Detected Debt Payments: ${context.budget.detectedDebtPayments || "None"}
 - Needs Debt Statement Upload: ${
         context.budget.needsDebtStatement
           ? "YES - User has debt payments but no detailed debt analysis"
@@ -259,35 +279,41 @@ COMPREHENSIVE BUDGET ANALYSIS FROM USER'S BANK STATEMENT:
       }`;
     }
 
-    // Add debt context if available
+    // Add debt context if available - WITH SAFE PROPERTY ACCESS
     if (context.debt) {
       prompt += `
 
 COMPREHENSIVE DEBT OPTIMIZATION ANALYSIS:
-- Recommended Strategy: ${context.debt.recommendedStrategy} method
-- Time to Debt-Free: ${context.debt.monthsToDebtFree} months
-- Total Debt Amount: R${context.debt.totalDebtAmount.toLocaleString()} across ${
-        context.debt.totalDebts
-      } debts
-- Monthly Debt Payments: R${context.debt.monthlyPayments.toLocaleString()}
-- Additional Budget Available: R${context.debt.additionalBudget.toLocaleString()}
-- Interest Saved vs Minimum Payments: R${
-        context.debt.interestSaved?.toLocaleString() || "N/A"
-      }
-- Optimal Payoff Order: ${context.debt.payoffOrder.join(" → ")}
-- Debt Details: ${context.debt.debtDetails}
-- Strategy Comparison: ${context.debt.strategyComparison}`;
+- Recommended Strategy: ${context.debt.recommendedStrategy || "N/A"} method
+- Time to Debt-Free: ${context.debt.monthsToDebtFree || "N/A"} months
+- Total Debt Amount: R${(
+        context.debt.totalDebtAmount || 0
+      ).toLocaleString()} across ${context.debt.totalDebts || 0} debts
+- Monthly Debt Payments: R${(
+        context.debt.monthlyPayments || 0
+      ).toLocaleString()}
+- Additional Budget Available: R${(
+        context.debt.additionalBudget || 0
+      ).toLocaleString()}
+- Interest Saved vs Minimum Payments: R${(
+        context.debt.interestSaved || 0
+      ).toLocaleString()}
+- Optimal Payoff Order: ${(context.debt.payoffOrder || []).join(" → ")}
+- Debt Details: ${context.debt.debtDetails || "N/A"}
+- Strategy Comparison: ${context.debt.strategyComparison || "N/A"}`;
     }
 
-    // Add investment context if available
+    // Add investment context if available - WITH SAFE PROPERTY ACCESS
     if (context.investment) {
       prompt += `
 
 COMPREHENSIVE INVESTMENT ANALYSIS:
-- Available for Investment: R${context.investment.monthlySavings.toLocaleString()}/month
-- Investment Strategies Analyzed: ${context.investment.strategies}
-- Strategy Projections: ${context.investment.strategyProjections}
-- AI Recommendations: ${context.investment.detailedRecommendations}`;
+- Available for Investment: R${(
+        context.investment.monthlySavings || 0
+      ).toLocaleString()}/month
+- Investment Strategies Analyzed: ${context.investment.strategies || "N/A"}
+- Strategy Projections: ${context.investment.strategyProjections || "N/A"}
+- AI Recommendations: ${context.investment.detailedRecommendations || "N/A"}`;
     }
 
     // Add guidance for missing data
@@ -540,11 +566,11 @@ Remember: You're helping South Africans with general financial wellness. Encoura
         );
       }
 
-      if (context.budget?.savingsRate < 10) {
+      if (parseFloat(context.budget?.savingsRate || 0) < 10) {
         questions.push("My savings rate is low - what should I do first?");
       }
 
-      if (context.budget?.potentialMonthlySavings > 1000) {
+      if ((context.budget?.potentialMonthlySavings || 0) > 1000) {
         questions.push(
           `How can I save the R${Math.round(
             context.budget.potentialMonthlySavings
@@ -599,7 +625,7 @@ Remember: You're helping South Africans with general financial wellness. Encoura
 
     const transactionCount = hasFinancialData
       ? Object.values(realAnalysisResults?.category_breakdown || {}).reduce(
-          (sum, cat) => sum + cat.count,
+          (sum, cat) => sum + (cat?.count || 0),
           0
         )
       : 0;
