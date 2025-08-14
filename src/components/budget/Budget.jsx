@@ -43,6 +43,11 @@ const Budget = ({
     ? debtInvestmentSplit.investment_budget // SHOW INVESTMENT BUDGET
     : optimizedAvailable;
 
+  // NEW: Calculate monthly amounts for side-by-side analysis
+  const splitRatio = hasActiveSplit ? debtInvestmentSplit.investment_ratio : 1;
+  const monthlyWithoutOpt = splitRatio * currentAvailable;
+  const monthlyWithOpt = splitRatio * optimizedAvailable;
+
   // Use backend annuity data if available
   const annuityData = realAnalysisResults?.annuity_projection;
 
@@ -158,8 +163,8 @@ const Budget = ({
         </div>
       </div>
 
-      {/* Optimization Summary - Only show when no split is active */}
-      {potentialMonthlySavings > 0 && !hasActiveSplit && (
+      {/* Optimization Summary */}
+      {potentialMonthlySavings > 0 && (
         <div className="bg-white p-4 rounded-lg border border-discovery-gold/20 shadow-sm">
           <h3 className="text-sm font-semibold mb-2 text-discovery-blue flex items-center">
             <Target className="w-4 h-4 mr-1 text-discovery-gold" />
@@ -168,17 +173,27 @@ const Budget = ({
           <div className="grid grid-cols-2 gap-2">
             <div className="text-center p-2 bg-discovery-blue/10 rounded-lg">
               <p className="text-xs text-gray-600">
-                Potential Additional Savings
+                Potential Additional{" "}
+                {hasActiveSplit ? "Investment Allocation" : "Savings"}
               </p>
               <p className="text-sm font-bold text-discovery-gold">
-                R{potentialMonthlySavings.toLocaleString()}
+                R
+                {(hasActiveSplit
+                  ? Math.round(splitRatio * potentialMonthlySavings)
+                  : potentialMonthlySavings
+                ).toLocaleString()}
               </p>
               <p className="text-[10px] text-gray-500">per month</p>
             </div>
             <div className="text-center p-2 bg-discovery-gold/10 rounded-lg">
-              <p className="text-xs text-gray-600">Optimized Monthly Savings</p>
+              <p className="text-xs text-gray-600">
+                Optimized Monthly {hasActiveSplit ? "Investment" : "Savings"}
+              </p>
               <p className="text-sm font-bold text-discovery-blue">
-                R{optimizedAvailable.toLocaleString()}
+                R
+                {Math.round(
+                  hasActiveSplit ? monthlyWithOpt : optimizedAvailable
+                ).toLocaleString()}
               </p>
               <p className="text-[10px] text-gray-500">with improvements</p>
             </div>
@@ -204,18 +219,22 @@ const Budget = ({
           </div>
         )}
 
-        {/* Scenario A: Current/Investment Budget */}
-        {displayAvailable > 0 && (
+        {/* Scenario A: Without Optimizations / Current */}
+        {monthlyWithoutOpt > 0 && (
           <div className="mb-4">
             <div className="bg-discovery-blue/10 p-2 rounded-lg mb-2">
               <h4 className="font-semibold text-discovery-blue mb-1 text-xs">
                 {hasActiveSplit
-                  ? `Investment Growth: R${displayAvailable.toLocaleString()}/month`
-                  : `Scenario A: Current Available Income (R${displayAvailable.toLocaleString()}/month)`}
+                  ? `Investment Growth Without Cost Optimizations: R${Math.round(
+                      monthlyWithoutOpt
+                    ).toLocaleString()}/month`
+                  : `Scenario A: Current Available Income (R${Math.round(
+                      currentAvailable
+                    ).toLocaleString()}/month)`}
               </h4>
               <p className="text-xs text-gray-600">
                 {hasActiveSplit
-                  ? "Growth potential of your strategic investment allocation"
+                  ? "Based on your current spending without improvements"
                   : "Based on your current spending patterns"}
               </p>
             </div>
@@ -243,7 +262,7 @@ const Budget = ({
                 <tbody>
                   {scenarioData.map((row, idx) => {
                     const { totalSaved, finalValue, interest } =
-                      calculateCompoundGrowth(displayAvailable, row.years);
+                      calculateCompoundGrowth(monthlyWithoutOpt, row.years);
 
                     return (
                       <tr key={idx} className="border-b border-gray-100">
@@ -266,13 +285,16 @@ const Budget = ({
           </div>
         )}
 
-        {/* Scenario B: Optimized Savings - only show if no split is active */}
-        {potentialMonthlySavings > 0 && !hasActiveSplit && (
+        {/* Scenario B: With Optimizations */}
+        {potentialMonthlySavings > 0 && (
           <div className="mb-4">
             <div className="bg-discovery-gold/10 p-2 rounded-lg mb-2">
               <h4 className="font-semibold text-discovery-gold mb-1 text-xs">
-                Scenario B: With Cost Optimizations (R
-                {optimizedAvailable.toLocaleString()}/month)
+                {hasActiveSplit
+                  ? `With Cost Optimizations: R${Math.round(
+                      monthlyWithOpt
+                    ).toLocaleString()}/month`
+                  : `Scenario B: With Cost Optimizations (R${optimizedAvailable.toLocaleString()}/month)`}
               </h4>
               <p className="text-xs text-gray-600">
                 If you implement the AI-suggested budget optimizations
@@ -287,27 +309,29 @@ const Budget = ({
                       Years
                     </th>
                     <th className="text-right py-2 text-discovery-blue">
-                      Total Saved
+                      Total {hasActiveSplit ? "Invested" : "Saved"}
                     </th>
                     <th className="text-right py-2 text-discovery-blue">
                       Final Value
                     </th>
                     <th className="text-right py-2 text-discovery-blue">
-                      Interest Earned
+                      {hasActiveSplit
+                        ? "Investment Returns"
+                        : "Interest Earned"}
                     </th>
                     <th className="text-right py-2 text-discovery-gold">
-                      Extra vs Current
+                      Extra vs {hasActiveSplit ? "Without Opt" : "Current"}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {scenarioData.map((row, idx) => {
                     const optimizedResult = calculateCompoundGrowth(
-                      optimizedAvailable,
+                      monthlyWithOpt,
                       row.years
                     );
                     const currentResult = calculateCompoundGrowth(
-                      currentAvailable,
+                      monthlyWithoutOpt,
                       row.years
                     );
                     const extraValue =
@@ -317,16 +341,16 @@ const Budget = ({
                       <tr key={idx} className="border-b border-gray-100">
                         <td className="py-2 font-medium">{row.years}</td>
                         <td className="py-2 text-right">
-                          R{optimizedResult.totalSaved.toLocaleString()}
+                          {formatCompactNumber(optimizedResult.totalSaved)}
                         </td>
                         <td className="py-2 text-right font-semibold text-discovery-blue">
-                          R{optimizedResult.finalValue.toLocaleString()}
+                          {formatCompactNumber(optimizedResult.finalValue)}
                         </td>
                         <td className="py-2 text-right text-discovery-gold">
-                          R{optimizedResult.interest.toLocaleString()}
+                          {formatCompactNumber(optimizedResult.interest)}
                         </td>
                         <td className="py-2 text-right font-semibold text-green-600">
-                          +R{extraValue.toLocaleString()}
+                          +{formatCompactNumber(extraValue)}
                         </td>
                       </tr>
                     );
@@ -344,19 +368,25 @@ const Budget = ({
             Key {hasActiveSplit ? "Investment" : ""} Insights:
           </h4>
           <div className="space-y-2 text-xs">
-            {displayAvailable > 0 && (
+            {(potentialMonthlySavings > 0
+              ? monthlyWithOpt
+              : monthlyWithoutOpt) > 0 && (
               <>
                 <div className="flex items-start px-2">
                   <div className="w-1.5 h-1.5 bg-discovery-gold rounded-full mt-1 mr-2"></div>
                   <p className="text-xs">
                     After 10 years: You'll have R
                     {calculateCompoundGrowth(
-                      displayAvailable,
+                      potentialMonthlySavings > 0
+                        ? monthlyWithOpt
+                        : monthlyWithoutOpt,
                       10
                     ).finalValue.toLocaleString()}{" "}
                     (R
                     {calculateCompoundGrowth(
-                      displayAvailable,
+                      potentialMonthlySavings > 0
+                        ? monthlyWithOpt
+                        : monthlyWithoutOpt,
                       10
                     ).interest.toLocaleString()}{" "}
                     in {hasActiveSplit ? "investment returns" : "interest"})
@@ -367,12 +397,16 @@ const Budget = ({
                   <p className="text-xs">
                     After 20 years: You'll have R
                     {calculateCompoundGrowth(
-                      displayAvailable,
+                      potentialMonthlySavings > 0
+                        ? monthlyWithOpt
+                        : monthlyWithoutOpt,
                       20
                     ).finalValue.toLocaleString()}{" "}
                     (R
                     {calculateCompoundGrowth(
-                      displayAvailable,
+                      potentialMonthlySavings > 0
+                        ? monthlyWithOpt
+                        : monthlyWithoutOpt,
                       20
                     ).interest.toLocaleString()}{" "}
                     in {hasActiveSplit ? "investment returns" : "interest"})
@@ -398,14 +432,14 @@ const Budget = ({
                 </p>
               </div>
             )}
-            {potentialMonthlySavings > 0 && !hasActiveSplit && (
+            {potentialMonthlySavings > 0 && (
               <div className="flex items-start px-2">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1 mr-2"></div>
                 <p className="text-xs">
                   With optimizations: Extra R
                   {(
-                    calculateCompoundGrowth(optimizedAvailable, 20).finalValue -
-                    calculateCompoundGrowth(currentAvailable, 20).finalValue
+                    calculateCompoundGrowth(monthlyWithOpt, 20).finalValue -
+                    calculateCompoundGrowth(monthlyWithoutOpt, 20).finalValue
                   ).toLocaleString()}{" "}
                   after 20 years!
                 </p>
