@@ -40,11 +40,11 @@ const BudgetReport = ({ analysisResults }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Report Header */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-1">
             📊 Budget Analysis Report
             <Badge variant="outline">{profileName}</Badge>
           </CardTitle>
@@ -60,31 +60,29 @@ const BudgetReport = ({ analysisResults }) => {
         <CardHeader>
           <CardTitle>💰 Financial Summary</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">Monthly Income</p>
-              <p className="text-2xl font-bold text-green-600">
+        <CardContent className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <p className="text-xs text-gray-600">Monthly Income</p>
+              <p className="text-sm font-bold text-green-600">
                 R{totalIncome.toLocaleString()}
               </p>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">Total Expenses</p>
-              <p className="text-2xl font-bold text-red-600">
+            <div className="space-y-1">
+              <p className="text-xs text-gray-600">Total Expenses</p>
+              <p className="text-sm font-bold text-red-600">
                 R{totalExpenses.toLocaleString()}
               </p>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">Available Income</p>
-              <p className="text-2xl font-bold text-blue-600">
+            <div className="space-y-1">
+              <p className="text-xs text-gray-600">Available Income</p>
+              <p className="text-sm font-bold text-blue-600">
                 R{availableIncome.toLocaleString()}
               </p>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">Savings Rate</p>
-              <p
-                className={`text-2xl font-bold ${getHealthColor(savingsRate)}`}
-              >
+            <div className="space-y-1">
+              <p className="text-xs text-gray-600">Savings Rate</p>
+              <p className={`text-sm font-bold ${getHealthColor(savingsRate)}`}>
                 {savingsRate.toFixed(1)}%
               </p>
             </div>
@@ -98,24 +96,24 @@ const BudgetReport = ({ analysisResults }) => {
           <CardTitle>📊 Expense Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-2">
             {Object.entries(categoryBreakdown)
               .filter(([_, data]) => data.amount > 0)
               .sort(([_, a], [__, b]) => b.amount - a.amount)
               .map(([category, data]) => (
-                <div key={category} className="space-y-2">
+                <div key={category} className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">{category}</span>
+                    <span className="font-medium text-xs">{category}</span>
                     <div className="text-right">
-                      <span className="font-bold">
+                      <span className="font-bold text-xs">
                         R{data.amount.toLocaleString()}
                       </span>
-                      <span className="text-sm text-gray-500 ml-2">
+                      <span className="text-[10px] text-gray-500 ml-1">
                         ({data.percentage.toFixed(1)}%)
                       </span>
                     </div>
                   </div>
-                  <Progress value={data.percentage} className="h-2" />
+                  <Progress value={data.percentage} className="h-1" />
                 </div>
               ))}
           </div>
@@ -131,7 +129,7 @@ const BudgetReport = ({ analysisResults }) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-2">
             {Object.entries(suggestions)
               .filter(
                 ([_, suggestion]) =>
@@ -142,21 +140,21 @@ const BudgetReport = ({ analysisResults }) => {
                 ([_, a], [__, b]) => b.potential_savings - a.potential_savings
               )
               .map(([category, suggestion]) => (
-                <div key={category} className="p-4 border rounded-lg space-y-2">
+                <div key={category} className="p-2 border rounded-lg space-y-1">
                   <div className="flex justify-between items-start">
-                    <h4 className="font-semibold">{category}</h4>
+                    <h4 className="font-semibold text-sm">{category}</h4>
                     <div className="text-right">
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs text-gray-600">
                         Current: R{suggestion.current_amount.toLocaleString()}
                       </p>
-                      <p className="text-sm font-medium text-green-600">
+                      <p className="text-xs font-medium text-green-600">
                         Save: R{suggestion.potential_savings.toLocaleString()}
                       </p>
                     </div>
                   </div>
                   <div className="space-y-1">
                     {suggestion.suggestions.map((sug, idx) => (
-                      <p key={idx} className="text-sm text-gray-700">
+                      <p key={idx} className="text-xs text-gray-700">
                         • {sug}
                       </p>
                     ))}
@@ -170,29 +168,31 @@ const BudgetReport = ({ analysisResults }) => {
       {/* Financial Health Assessment */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-1">
             <span>{getHealthIcon(savingsRate)}</span>
             Financial Health Assessment
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className={`font-medium ${getHealthColor(savingsRate)}`}>
+          <div className="space-y-2">
+            <div className="p-2 bg-gray-50 rounded-lg">
+              <p
+                className={`font-medium ${getHealthColor(savingsRate)} text-xs`}
+              >
                 {healthStatus}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600">Current Savings Rate</p>
-                <div className="flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <p className="text-xs text-gray-600">Current Savings Rate</p>
+                <div className="flex items-center gap-1">
                   <Progress
                     value={Math.min(savingsRate, 100)}
-                    className="flex-1"
+                    className="flex-1 h-1"
                   />
                   <span
-                    className={`text-sm font-medium ${getHealthColor(
+                    className={`text-xs font-medium ${getHealthColor(
                       savingsRate
                     )}`}
                   >
@@ -201,28 +201,28 @@ const BudgetReport = ({ analysisResults }) => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600">Potential Savings Rate</p>
-                <div className="flex items-center gap-2">
+              <div className="space-y-1">
+                <p className="text-xs text-gray-600">Potential Savings Rate</p>
+                <div className="flex items-center gap-1">
                   <Progress
                     value={Math.min(improvedSavingsRate, 100)}
-                    className="flex-1"
+                    className="flex-1 h-1"
                   />
-                  <span className="text-sm font-medium text-green-600">
+                  <span className="text-xs font-medium text-green-600">
                     {improvedSavingsRate.toFixed(1)}%
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-blue-600 text-lg">📈</span>
-                <span className="font-medium text-blue-800">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-1 mb-1">
+                <span className="text-blue-600 text-base">📈</span>
+                <span className="font-medium text-blue-800 text-xs">
                   Improvement Potential
                 </span>
               </div>
-              <p className="text-sm text-blue-700">
+              <p className="text-xs text-blue-700">
                 By implementing these suggestions, you could improve your
                 savings rate by{" "}
                 <span className="font-bold">

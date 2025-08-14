@@ -12,7 +12,7 @@ export const DeclineGraphIcon = (props) => (
   </svg>
 );
 
-export const VitalityIcon= (props) => (
+export const VitalityIcon = (props) => (
   <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
     <path d="M9 16.17L4.83 12 3.41 13.41 9 19l12-12-1.41-1.41z" />
   </svg>

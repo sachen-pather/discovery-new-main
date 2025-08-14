@@ -1,4 +1,15 @@
 import React from "react";
+import {
+  Wallet,
+  Target,
+  BarChart3,
+  TrendingUp,
+  DollarSign,
+  Calculator,
+  Sparkles,
+  Trophy,
+  Info,
+} from "lucide-react";
 
 const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
   const potentialMonthlySavings = realAnalysisResults
@@ -73,93 +84,96 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Budget Overview */}
-      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-6 rounded-xl border border-discovery-gold/20">
-        <h2 className="text-xl font-bold mb-2 text-black">Budget Management</h2>
-        <p className="text-black mb-4">
+      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-4 rounded-lg border border-discovery-gold/20">
+        <h2 className="text-sm font-bold mb-2 text-black">Budget Management</h2>
+        <p className="text-xs text-black mb-2">
           Track your spending and optimize your budget
         </p>
         {realAnalysisResults && (
-          <div className="text-sm text-discovery-gold mb-4">
-            ✨ Based on your real financial data analysis
+          <div className="text-xs text-discovery-gold mb-2 flex items-center">
+            <Sparkles className="w-3 h-3 mr-1" />
+            Based on your real financial data analysis
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-discovery-gold/20">
-            <p className="text-sm text-black">Monthly Income</p>
-            <p className="text-2xl font-bold text-black">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-white p-2 rounded-lg border border-discovery-gold/20">
+            <p className="text-xs text-black">Monthly Income</p>
+            <p className="text-sm font-bold text-black">
               R{totalIncome.toLocaleString()}
             </p>
-            <p className="text-xs text-black">Total available</p>
+            <p className="text-[10px] text-black">Total available</p>
           </div>
-          <div className="bg-white p-4 rounded-lg border border-discovery-gold/20">
-            <p className="text-sm text-black">Available to Save</p>
-            <p className="text-2xl font-bold text-black">
+          <div className="bg-white p-2 rounded-lg border border-discovery-gold/20">
+            <p className="text-xs text-black">Available to Save</p>
+            <p className="text-sm font-bold text-black">
               R{currentAvailable.toLocaleString()}
             </p>
-            <p className="text-xs text-black">Current savings potential</p>
+            <p className="text-[10px] text-black">Current savings potential</p>
           </div>
         </div>
       </div>
 
       {/* Optimization Summary */}
       {potentialMonthlySavings > 0 && (
-        <div className="bg-white p-6 rounded-xl border border-discovery-gold/20 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 text-discovery-blue">
-            💡 Optimization Opportunity
+        <div className="bg-white p-4 rounded-lg border border-discovery-gold/20 shadow-sm">
+          <h3 className="text-sm font-semibold mb-2 text-discovery-blue flex items-center">
+            <Target className="w-4 h-4 mr-1 text-discovery-gold" />
+            Optimization Opportunity
           </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-4 bg-discovery-blue/10 rounded-lg">
-              <p className="text-sm text-gray-600">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-center p-2 bg-discovery-blue/10 rounded-lg">
+              <p className="text-xs text-gray-600">
                 Potential Additional Savings
               </p>
-              <p className="text-2xl font-bold text-discovery-gold">
+              <p className="text-sm font-bold text-discovery-gold">
                 R{potentialMonthlySavings.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500">per month</p>
+              <p className="text-[10px] text-gray-500">per month</p>
             </div>
-            <div className="text-center p-4 bg-discovery-gold/10 rounded-lg">
-              <p className="text-sm text-gray-600">Optimized Monthly Savings</p>
-              <p className="text-2xl font-bold text-discovery-blue">
+            <div className="text-center p-2 bg-discovery-gold/10 rounded-lg">
+              <p className="text-xs text-gray-600">Optimized Monthly Savings</p>
+              <p className="text-sm font-bold text-discovery-blue">
                 R{optimizedAvailable.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500">with improvements</p>
+              <p className="text-[10px] text-gray-500">with improvements</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Scenario Analysis */}
-      <div className="bg-white p-6 rounded-xl border border-discovery-gold/20 shadow-sm">
-        <h3 className="text-lg font-semibold mb-4 text-discovery-blue">
+      <div className="bg-white p-4 rounded-lg border border-discovery-gold/20 shadow-sm">
+        <h3 className="text-sm font-semibold mb-2 text-discovery-blue">
           Scenario Analysis
         </h3>
-        <p className="text-gray-600 mb-6">
+        <p className="text-xs text-gray-600 mb-2">
           See how your savings could grow over time with compound interest
         </p>
         {annuityData && (
-          <div className="text-sm text-discovery-gold mb-4">
-            📊 Calculations powered by your backend analysis
+          <div className="text-xs text-discovery-gold mb-2 flex items-center">
+            <BarChart3 className="w-3 h-3 mr-1" />
+            Calculations without using the AI optimizations
           </div>
         )}
 
         {/* Scenario A: Current Savings */}
         {currentAvailable > 0 && (
-          <div className="mb-8">
-            <div className="bg-discovery-blue/10 p-4 rounded-lg mb-4">
-              <h4 className="font-semibold text-discovery-blue mb-2">
+          <div className="mb-4">
+            <div className="bg-discovery-blue/10 p-2 rounded-lg mb-2">
+              <h4 className="font-semibold text-discovery-blue mb-1 text-xs">
                 Scenario A: Current Available Income (R
                 {currentAvailable.toLocaleString()}/month)
               </h4>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs text-gray-600">
                 Based on your current spending patterns
               </p>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-discovery-gold/20">
                     <th className="text-left py-2 text-discovery-blue">
@@ -184,13 +198,13 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
                     return (
                       <tr key={idx} className="border-b border-gray-100">
                         <td className="py-2 font-medium">{row.years}</td>
-                        <td className="py-2 text-right text-xs">
+                        <td className="py-2 text-right">
                           {formatCompactNumber(totalSaved)}
                         </td>
-                        <td className="py-2 text-right font-semibold text-discovery-blue text-xs">
+                        <td className="py-2 text-right font-semibold text-discovery-blue">
                           {formatCompactNumber(finalValue)}
                         </td>
-                        <td className="py-2 text-right text-discovery-gold text-xs">
+                        <td className="py-2 text-right text-discovery-gold">
                           {formatCompactNumber(interest)}
                         </td>
                       </tr>
@@ -204,19 +218,19 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
 
         {/* Scenario B: Optimized Savings */}
         {potentialMonthlySavings > 0 && (
-          <div className="mb-6">
-            <div className="bg-discovery-gold/10 p-4 rounded-lg mb-4">
-              <h4 className="font-semibold text-discovery-gold mb-2">
+          <div className="mb-4">
+            <div className="bg-discovery-gold/10 p-2 rounded-lg mb-2">
+              <h4 className="font-semibold text-discovery-gold mb-1 text-xs">
                 Scenario B: With Cost Optimizations (R
                 {optimizedAvailable.toLocaleString()}/month)
               </h4>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs text-gray-600">
                 If you implement the AI-suggested budget optimizations
               </p>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-discovery-gold/20">
                     <th className="text-left py-2 text-discovery-blue">
@@ -274,16 +288,17 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
         )}
 
         {/* Key Insights */}
-        <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-4 rounded-lg mb-4">
-          <h4 className="font-semibold text-discovery-blue mb-3">
+        <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-2 rounded-lg mb-2">
+          <h4 className="font-semibold text-discovery-blue mb-2 flex items-center text-xs">
+            <TrendingUp className="w-3 h-3 mr-1" />
             Key Insights:
           </h4>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-2 text-xs">
             {currentAvailable > 0 && (
               <>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-discovery-gold rounded-full"></div>
-                  <p>
+                <div className="flex items-start px-2">
+                  <div className="w-1.5 h-1.5 bg-discovery-gold rounded-full mt-1 mr-2"></div>
+                  <p className="text-xs">
                     After 10 years: You'll have R
                     {calculateCompoundGrowth(
                       currentAvailable,
@@ -297,9 +312,9 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
                     in interest)
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-discovery-blue rounded-full"></div>
-                  <p>
+                <div className="flex items-start px-2">
+                  <div className="w-1.5 h-1.5 bg-discovery-blue rounded-full mt-1 mr-2"></div>
+                  <p className="text-xs">
                     After 20 years: You'll have R
                     {calculateCompoundGrowth(
                       currentAvailable,
@@ -313,9 +328,9 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
                     in interest)
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-discovery-gold rounded-full"></div>
-                  <p>
+                <div className="flex items-start px-2">
+                  <div className="w-1.5 h-1.5 bg-discovery-gold rounded-full mt-1 mr-2"></div>
+                  <p className="text-xs">
                     Your money grows 2.4x from year 10 to year 20 due to
                     compound interest!
                   </p>
@@ -323,9 +338,9 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
               </>
             )}
             {potentialMonthlySavings > 0 && (
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <p>
+              <div className="flex items-start px-2">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1 mr-2"></div>
+                <p className="text-xs">
                   With optimizations: Extra R
                   {(
                     calculateCompoundGrowth(optimizedAvailable, 20).finalValue -
@@ -339,11 +354,12 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
         </div>
 
         {/* Calculation Assumptions */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="font-semibold text-gray-700 mb-2">
+        <div className="bg-gray-50 p-2 rounded-lg">
+          <h4 className="font-semibold text-gray-700 mb-1 flex items-center text-xs">
+            <Calculator className="w-3 h-3 mr-1" />
             Calculation Assumptions:
           </h4>
-          <div className="text-xs text-gray-600 space-y-1">
+          <div className="text-[10px] text-gray-600 space-y-1">
             <p>• 6.75% annual return (compounded monthly)</p>
             <p>• Fixed monthly contributions at month-end</p>
             <p>
@@ -363,31 +379,33 @@ const Budget = ({ financialData, userProfile, realAnalysisResults }) => {
       </div>
 
       {/* Discovery Integration */}
-      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-6 rounded-xl border border-discovery-gold/20">
-        <h3 className="text-lg font-semibold mb-4 text-discovery-blue">
+      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-4 rounded-lg border border-discovery-gold/20">
+        <h3 className="text-sm font-semibold mb-2 text-discovery-blue flex items-center">
+          <Trophy className="w-4 h-4 mr-1" />
           Discovery Vitality Integration
         </h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-discovery-gold/20">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-discovery-gold/20">
             <div>
-              <p className="font-medium text-discovery-blue">
+              <p className="font-medium text-discovery-blue text-xs">
                 Current Status: {userProfile.vitalityStatus}
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-[10px] text-gray-600">
                 Budget management contributes to Vitality points
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-discovery-gold">+500 points</p>
-              <p className="text-xs text-gray-400">This month</p>
+              <p className="text-xs text-discovery-gold">+500 points</p>
+              <p className="text-[10px] text-gray-400">This month</p>
             </div>
           </div>
 
-          <div className="p-3 bg-white rounded-lg border border-discovery-gold/20">
-            <p className="font-medium text-sm text-discovery-blue">
+          <div className="p-2 bg-white rounded-lg border border-discovery-gold/20">
+            <p className="font-medium text-xs text-discovery-blue flex items-center">
+              <Info className="w-3 h-3 mr-1" />
               Vitality Benefit
             </p>
-            <p className="text-xs text-gray-600">
+            <p className="text-[10px] text-gray-600">
               Maintaining a healthy budget earns Vitality points, reducing your
               medical aid costs by up to 25%
             </p>

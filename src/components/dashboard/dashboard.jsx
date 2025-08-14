@@ -1,4 +1,18 @@
-// components/dashboard/Dashboard.js
+import {
+  TrendingUp,
+  Wallet,
+  Upload,
+  FileText,
+  AlertTriangle,
+  Target,
+  CheckCircle,
+  Sparkles,
+  FileSpreadsheet,
+  FileImage,
+  Search,
+  Shield,
+  ExternalLink,
+} from "lucide-react";
 import React, { useState } from "react";
 
 const Dashboard = ({
@@ -39,61 +53,64 @@ const Dashboard = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Real Data Indicator */}
       {hasRealData && (
-        <div className="bg-discovery-gold/10 p-3 rounded-lg border border-discovery-gold/20">
-          <p className="text-sm text-discovery-gold font-medium">
-            ✨ Showing your real financial analysis results
+        <div className="bg-discovery-gold/10 p-2 rounded-lg border border-discovery-gold/20">
+          <p className="text-xs text-discovery-gold font-medium flex items-center">
+            <Sparkles className="w-3 h-3 text-discovery-gold mr-1" /> Showing
+            your real financial analysis results
           </p>
         </div>
       )}
 
       {/* Financial Overview */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-gradient-to-r from-discovery-gold to-discovery-gold/80 p-4 rounded-xl text-white">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-gradient-to-r from-discovery-gold to-discovery-gold/80 p-2 rounded-lg text-white">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/90 text-xs">Monthly Income</p>
               {hasRealData ? (
-                <p className="text-lg font-bold">
+                <p className="text-sm font-bold">
                   R{totalIncome.toLocaleString()}
                 </p>
               ) : (
-                <p className="text-lg font-bold text-white/60">Upload File</p>
+                <p className="text-sm font-bold text-white/60">Upload File</p>
               )}
+              <p className="text-[10px] text-white/80">Total available</p>
             </div>
-            <span className="text-white text-xl">↗️</span>
+            <TrendingUp className="w-4 h-4 text-white" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-discovery-blue to-discovery-blue/80 p-4 rounded-xl text-white">
+        <div className="bg-gradient-to-r from-discovery-blue to-discovery-blue/80 p-2 rounded-lg text-white">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/90 text-xs">Available</p>
               {hasRealData ? (
-                <p className="text-lg font-bold">
+                <p className="text-sm font-bold">
                   R{disposableIncome.toLocaleString()}
                 </p>
               ) : (
-                <p className="text-lg font-bold text-white/60">Upload File</p>
+                <p className="text-sm font-bold text-white/60">Upload File</p>
               )}
+              <p className="text-[10px] text-white/80">To save/invest</p>
             </div>
-            <span className="text-white text-xl">💰</span>
+            <Wallet className="w-4 h-4 text-white" />
           </div>
         </div>
       </div>
 
       {/* Upload Section */}
-      <div className="bg-white p-6 rounded-xl border-2 border-dashed border-discovery-gold/30">
+      <div className="bg-white p-4 rounded-lg border-2 border-dashed border-discovery-gold/30">
         <div className="text-center">
           {isUploading ? (
-            <div className="py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-discovery-gold mb-4"></div>
-              <h3 className="text-lg font-semibold mb-2 text-discovery-blue">
+            <div className="py-4">
+              <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-discovery-gold mb-2"></div>
+              <h3 className="text-sm font-semibold mb-1 text-discovery-blue">
                 Processing {uploadType} File...
               </h3>
-              <p className="text-gray-600">
+              <p className="text-xs text-gray-600">
                 {uploadType === "PDF"
                   ? "Extracting data from PDF and analyzing..."
                   : "Analyzing your bank statement with AI..."}
@@ -101,20 +118,20 @@ const Dashboard = ({
             </div>
           ) : (
             <>
-              <div className="mx-auto mb-4 text-discovery-gold text-5xl">
-                📄
+              <div className="mx-auto mb-2 text-discovery-gold">
+                <Upload className="w-8 h-8 text-discovery-gold mx-auto" />
               </div>
-              <h3 className="text-lg font-semibold mb-2 text-discovery-blue">
+              <h3 className="text-sm font-semibold mb-1 text-discovery-blue">
                 {hasRealData ? "Upload New Statement" : "Upload Bank Statement"}
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-xs text-gray-600 mb-2">
                 {hasRealData
                   ? "Analyze a different file (CSV or PDF)"
                   : "Get AI-powered insights from your bank statement"}
               </p>
 
-              <label className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-discovery-gold to-discovery-blue text-white rounded-lg cursor-pointer hover:from-discovery-gold/90 hover:to-discovery-blue/90 transition-colors">
-                <span className="mr-2 text-xl">📎</span>
+              <label className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-discovery-gold to-discovery-blue text-white text-xs rounded-lg cursor-pointer hover:from-discovery-gold/90 hover:to-discovery-blue/90 transition-colors">
+                <Search className="w-3 h-3 mr-1" />
                 Choose File (CSV or PDF)
                 <input
                   type="file"
@@ -125,17 +142,17 @@ const Dashboard = ({
                 />
               </label>
 
-              <div className="mt-4 space-y-2">
-                <p className="text-xs text-gray-500">
+              <div className="mt-2 space-y-1">
+                <p className="text-[10px] text-gray-500">
                   Supports CSV and PDF files • Your data is encrypted and secure
                 </p>
-                <div className="flex justify-center space-x-4 text-xs text-gray-400">
+                <div className="flex justify-center space-x-2 text-[10px] text-gray-400">
                   <span className="flex items-center">
-                    <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></span>
                     CSV: Direct processing
                   </span>
                   <span className="flex items-center">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-1"></span>
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1"></span>
                     PDF: AI extraction + processing
                   </span>
                 </div>
@@ -145,57 +162,50 @@ const Dashboard = ({
         </div>
       </div>
 
-      {/* Quick Insights */}
-      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-6 rounded-xl border border-discovery-gold/20">
-        <h3 className="text-lg font-semibold mb-4 text-discovery-blue">
-          {hasRealData ? "AI Insights from Your Data" : "Quick Insights"}
-        </h3>
-        <div className="grid grid-cols-1 gap-3">
-          {financialData.insights.slice(0, 2).map((insight, idx) => (
-            <div
-              key={idx}
-              className="flex items-start space-x-3 p-3 bg-white rounded-lg border border-discovery-gold/20"
-            >
-              <div className="mt-1">
-                {insight.type === "warning" && (
-                  <span className="text-red-500 text-lg">⚠️</span>
-                )}
-                {insight.type === "opportunity" && (
-                  <span className="text-discovery-gold text-lg">🎯</span>
-                )}
-                {insight.type === "positive" && (
-                  <span className="text-discovery-blue text-lg">✅</span>
-                )}
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-sm text-discovery-blue">
-                  {insight.title}
-                </p>
-                <p className="text-xs text-gray-600">{insight.suggestion}</p>
-                <p className="text-xs text-discovery-gold font-medium">
-                  {insight.impact}
-                </p>
-              </div>
-            </div>
-          ))}
+      {/* Financial Literacy Academy */}
+      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-4 rounded-lg border border-discovery-gold/20">
+        <div className="text-center">
+          <div className="mx-auto mb-2 w-12 h-12 bg-gradient-to-r from-discovery-gold to-discovery-blue rounded-full flex items-center justify-center">
+            <Shield className="w-6 h-6 text-white" />
+          </div>
+          <h3 className="text-base font-semibold mb-1 text-discovery-blue">
+            Financial Literacy Academy
+          </h3>
+          <p className="text-gray-600 mb-2 text-xs">
+            Boost your financial knowledge and earn Vitality points through
+            interactive learning modules
+          </p>
+          <a
+            href="https://dainty-bonbon-de4898.netlify.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-discovery-gold to-discovery-blue text-white rounded-lg font-semibold hover:from-discovery-gold/90 hover:to-discovery-blue/90 transition-all transform hover:scale-[1.02] shadow-lg"
+          >
+            <Shield className="w-4 h-4 mr-1" />
+            Access Academy
+            <ExternalLink className="w-3 h-3 ml-1" />
+          </a>
+          <p className="text-xs text-gray-500 mt-1">
+            Complete courses to improve your financial wellness and earn rewards
+          </p>
         </div>
       </div>
 
       {/* File Format Help */}
       {!hasRealData && (
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-          <h4 className="font-medium text-gray-800 mb-2">
-            📋 Supported Formats
+        <div className="bg-gray-50 p-2 rounded-lg border border-gray-200">
+          <h4 className="font-medium text-gray-800 mb-1 flex items-center text-xs">
+            <FileText className="w-3 h-3 mr-1" /> Supported Formats
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px]">
+            <div className="space-y-0.5">
               <p className="font-medium text-gray-700">CSV Files:</p>
               <p className="text-gray-600">• Standard bank CSV exports</p>
               <p className="text-gray-600">
                 • Columns: Date, Description, Amount, Balance
               </p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <p className="font-medium text-gray-700">PDF Files:</p>
               <p className="text-gray-600">• Bank statement PDFs</p>
               <p className="text-gray-600">• Text-based (not scanned images)</p>

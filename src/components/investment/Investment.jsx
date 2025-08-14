@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { getInvestmentAnalysis } from "../../utils/api"; // Fixed import path for utils
+import { getInvestmentAnalysis } from "../../utils/api";
+import {
+  TrendingUp,
+  BarChart3,
+  Shield,
+  Bot,
+  DollarSign,
+  AlertTriangle,
+  BookOpen,
+  Target,
+  Activity,
+  RefreshCw,
+  Lightbulb,
+  Sparkles,
+} from "lucide-react";
 
 const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
   const [selectedStrategy, setSelectedStrategy] = useState("moderate");
@@ -28,7 +42,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
     setError(null);
     try {
       console.log(
-        "🔄 Loading investment analysis with available monthly:",
+        "📄 Loading investment analysis with available monthly:",
         availableMonthly
       );
       const analysis = await getInvestmentAnalysis(availableMonthly);
@@ -54,7 +68,12 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
           volatility: profile.profile.volatility / 100, // Convert percentage to decimal
           effectiveReturn: profile.profile.effective_return / 100, // Convert percentage to decimal
           description: profile.profile.description,
-          emoji: key === "aggressive" ? "🚀" : key === "moderate" ? "⚖️" : "🛡️",
+          icon:
+            key === "aggressive"
+              ? TrendingUp
+              : key === "moderate"
+              ? BarChart3
+              : Shield,
           color: "bg-gray-200",
           allocation: getDefaultAllocation(key),
           projections: profile.projections,
@@ -70,7 +89,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
         avgReturn: 0.105,
         volatility: 0.18,
         description: "High growth potential, high risk",
-        emoji: "🚀",
+        icon: TrendingUp,
         color: "bg-gray-200",
         allocation: { stocks: 85, bonds: 10, cash: 5 },
       },
@@ -79,7 +98,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
         avgReturn: 0.085,
         volatility: 0.12,
         description: "Balanced growth and stability",
-        emoji: "⚖️",
+        icon: BarChart3,
         color: "bg-gray-200",
         allocation: { stocks: 60, bonds: 30, cash: 10 },
       },
@@ -88,7 +107,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
         avgReturn: 0.065,
         volatility: 0.06,
         description: "Capital preservation focus",
-        emoji: "🛡️",
+        icon: Shield,
         color: "bg-gray-200",
         allocation: { stocks: 30, bonds: 60, cash: 10 },
       },
@@ -160,10 +179,10 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
     <div className="space-y-4">
       {/* Loading State */}
       {loading && (
-        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+        <div className="bg-discovery-blue/10 rounded-lg p-2 border border-discovery-blue/20">
           <div className="flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            <span className="text-sm text-blue-600">
+            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-discovery-blue"></div>
+            <span className="text-xs text-discovery-blue">
               Loading investment analysis...
             </span>
           </div>
@@ -172,16 +191,19 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
 
       {/* Error State */}
       {error && (
-        <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+        <div className="bg-white rounded-lg p-2 border border-gray-200 shadow-sm">
           <div className="flex items-start space-x-2">
-            <span className="text-red-600">⚠️</span>
+            <AlertTriangle className="w-4 h-4 text-discovery-gold" />
             <div>
-              <p className="text-sm font-medium text-red-800">Analysis Error</p>
-              <p className="text-xs text-red-600 mt-1">{error}</p>
+              <p className="text-xs font-medium text-discovery-blue">
+                Analysis Error
+              </p>
+              <p className="text-[10px] text-gray-600 mt-1">{error}</p>
               <button
                 onClick={loadInvestmentAnalysis}
-                className="mt-2 text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                className="mt-1 text-[10px] bg-discovery-blue text-white px-2 py-1 rounded hover:bg-discovery-blue/90 flex items-center"
               >
+                <RefreshCw className="w-2 h-2 mr-1" />
                 Retry
               </button>
             </div>
@@ -191,28 +213,31 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
 
       {/* Backend Analysis Summary */}
       {backendAnalysis && (
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
-          <div className="flex items-start space-x-3">
-            <span className="text-xl">🤖</span>
+        <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 rounded-lg p-2 border border-discovery-gold/20">
+          <div className="flex items-start space-x-2">
+            <Bot className="w-4 h-4 text-discovery-gold" />
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-gray-800 mb-2">
+              <h3 className="text-xs font-semibold text-discovery-blue mb-1">
                 AI Investment Analysis
+                <span className="ml-1 text-[10px] bg-discovery-blue/10 text-discovery-blue px-1 py-0.5 rounded-full">
+                  Enhanced
+                </span>
               </h3>
-              <p className="text-xs text-gray-600 mb-3">
+              <p className="text-[10px] text-gray-600 mb-2">
                 Based on R{backendAnalysis.monthly_savings?.toLocaleString()}{" "}
                 available monthly
               </p>
               {backendAnalysis.recommendations && (
-                <div className="bg-white/80 rounded p-2">
-                  <p className="text-xs text-gray-700 font-medium mb-1">
+                <div className="bg-white/80 rounded p-1">
+                  <p className="text-[10px] text-discovery-blue font-medium mb-1">
                     Key Recommendations:
                   </p>
-                  <ul className="text-xs text-gray-600 space-y-1">
+                  <ul className="text-[10px] text-gray-600 space-y-0.5">
                     {backendAnalysis.recommendations
                       .slice(0, 3)
                       .map((rec, index) => (
                         <li key={index} className="flex items-start">
-                          <span className="mr-1">•</span>
+                          <span className="mr-1 text-discovery-gold">•</span>
                           <span>{rec}</span>
                         </li>
                       ))}
@@ -230,27 +255,29 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
           Investment Fund Selection
         </h3>
         <div className="grid grid-cols-3 gap-2 mb-4">
-          {Object.entries(investmentStrategies).map(([key, strategy]) => (
-            <button
-              key={key}
-              onClick={() => setSelectedStrategy(key)}
-              className={`p-3 rounded-lg border-2 transition-all ${
-                selectedStrategy === key
-                  ? "border-gray-500 bg-gray-100"
-                  : "border-gray-200 bg-white hover:bg-gray-50"
-              }`}
-            >
-              <span className="text-xl">{strategy.emoji}</span>
-              <p className="text-xs font-medium mt-1">{strategy.name}</p>
-              <p className="text-[10px] text-gray-500">
-                {(
-                  (strategy.avgReturn || strategy.effectiveReturn || 0) *
-                  100
-                ).toFixed(1)}
-                % avg return
-              </p>
-            </button>
-          ))}
+          {Object.entries(investmentStrategies).map(([key, strategy]) => {
+            const IconComponent = strategy.icon;
+            return (
+              <button
+                key={key}
+                onClick={() => setSelectedStrategy(key)}
+                className={`p-3 rounded-lg border-2 transition-all ${
+                  selectedStrategy === key
+                    ? "border-gray-500 bg-gray-100"
+                    : "border-gray-200 bg-white hover:bg-gray-50"
+                }`}
+              >
+                <IconComponent className="w-6 h-6 mx-auto mb-2 text-gray-600" />
+                <p className="text-xs font-medium mt-1">{strategy.name}</p>
+                <p className="text-[10px] text-gray-500">
+                  {(
+                    (strategy.avgReturn || strategy.effectiveReturn || 0) * 100
+                  ).toFixed(1)}
+                  % avg return
+                </p>
+              </button>
+            );
+          })}
         </div>
 
         {/* Selected Strategy Details */}
@@ -264,9 +291,14 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
                 {investmentStrategies[selectedStrategy].description}
               </p>
             </div>
-            <span className="text-2xl">
-              {investmentStrategies[selectedStrategy].emoji}
-            </span>
+            <div className="text-2xl">
+              {React.createElement(
+                investmentStrategies[selectedStrategy].icon,
+                {
+                  className: "w-8 h-8 text-gray-600",
+                }
+              )}
+            </div>
           </div>
 
           {/* Strategy Metrics */}
@@ -275,8 +307,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
               <p className="text-[10px] text-gray-500">Avg Return</p>
               <p className="text-sm font-bold text-gray-800">
                 {(
-                  (investmentStrategies[selectedStrategy].avgReturn || 0) *
-                  100
+                  (investmentStrategies[selectedStrategy].avgReturn || 0) * 100
                 ).toFixed(2)}
                 %
               </p>
@@ -285,8 +316,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
               <p className="text-[10px] text-gray-500">Volatility (σ)</p>
               <p className="text-sm font-bold text-gray-800">
                 {(
-                  (investmentStrategies[selectedStrategy].volatility || 0) *
-                  100
+                  (investmentStrategies[selectedStrategy].volatility || 0) * 100
                 ).toFixed(2)}
                 %
               </p>
@@ -390,8 +420,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
                   projection.effective_future_value ||
                   projection.futureValue ||
                   0;
-                const totalContributions =
-                  projection.total_contributions || 0;
+                const totalContributions = projection.total_contributions || 0;
                 const interestEarned = futureValue - totalContributions;
 
                 return (
@@ -476,19 +505,18 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
             }
 
             const isSelected = key === selectedStrategy;
+            const IconComponent = strategy.icon;
 
             return (
               <div
                 key={key}
                 className={`rounded-lg p-3 border ${
-                  isSelected
-                    ? "border-gray-500 bg-gray-100"
-                    : "border-gray-200"
+                  isSelected ? "border-gray-500 bg-gray-100" : "border-gray-200"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{strategy.emoji}</span>
+                    <IconComponent className="w-5 h-5 text-gray-600" />
                     <div>
                       <p
                         className={`text-xs font-medium ${
@@ -521,9 +549,7 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
                         maximumFractionDigits: 0,
                       })}
                     </p>
-                    <p className="text-[10px] text-gray-500">
-                      after 20 years
-                    </p>
+                    <p className="text-[10px] text-gray-500">after 20 years</p>
                   </div>
                 </div>
               </div>
@@ -535,15 +561,14 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
       {/* Investment Tips */}
       <div className="bg-white rounded-lg p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-          <span className="mr-2">📚</span>
+          <BookOpen className="w-4 h-4 mr-2" />
           Investment Best Practices
         </h3>
         <div className="space-y-2">
           <div className="flex items-start space-x-2">
             <span className="text-xs text-gray-400 mt-0.5">▸</span>
             <p className="text-xs text-gray-600">
-              Stay disciplined with your chosen strategy through market
-              cycles
+              Stay disciplined with your chosen strategy through market cycles
             </p>
           </div>
           <div className="flex items-start space-x-2">
@@ -555,8 +580,8 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
           <div className="flex items-start space-x-2">
             <span className="text-xs text-gray-400 mt-0.5">▸</span>
             <p className="text-xs text-gray-600">
-              Dollar-cost averaging: Invest consistently regardless of
-              market conditions
+              Dollar-cost averaging: Invest consistently regardless of market
+              conditions
             </p>
           </div>
           <div className="flex items-start space-x-2">
@@ -577,10 +602,10 @@ const Investment = ({ financialData, userProfile, realAnalysisResults }) => {
             backendAnalysis.recommendations.slice(3).map((rec, index) => (
               <div
                 key={index}
-                className="flex items-start space-x-2 bg-blue-50 p-2 rounded"
+                className="flex items-start space-x-1 bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-1 rounded border border-discovery-gold/20"
               >
-                <span className="text-xs text-blue-600 mt-0.5">🤖</span>
-                <p className="text-xs text-blue-700">
+                <Bot className="w-3 h-3 text-discovery-gold mt-0.5" />
+                <p className="text-[10px] text-discovery-blue">
                   <strong>AI Tip:</strong> {rec}
                 </p>
               </div>

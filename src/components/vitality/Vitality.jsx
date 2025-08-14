@@ -1,4 +1,22 @@
 import React from "react";
+import {
+  Heart,
+  Award,
+  Trophy,
+  Star,
+  Activity,
+  DollarSign,
+  ShoppingCart,
+  Pill,
+  TrendingUp,
+  Target,
+  Info,
+  Lightbulb,
+  Sparkles,
+  Coffee,
+  Smartphone,
+  ArrowRight,
+} from "lucide-react";
 
 const Vitality = ({
   userProfile = {},
@@ -29,14 +47,14 @@ const Vitality = ({
     {
       name: "Blue",
       threshold: 0,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
+      color: "text-discovery-blue",
+      bgColor: "bg-discovery-blue/10",
     },
     {
       name: "Bronze",
       threshold: 2500,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
+      color: "text-discovery-gold",
+      bgColor: "bg-discovery-gold/10",
     },
     {
       name: "Silver",
@@ -47,14 +65,14 @@ const Vitality = ({
     {
       name: "Gold",
       threshold: 15000,
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-100",
+      color: "text-discovery-gold",
+      bgColor: "bg-discovery-gold/20",
     },
     {
       name: "Diamond",
       threshold: 25000,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
+      color: "text-discovery-blue",
+      bgColor: "bg-discovery-blue/20",
     },
   ];
 
@@ -74,38 +92,64 @@ const Vitality = ({
     Diamond: 0.25,
   };
 
-  // Estimate annual Vitality points based on typical member behavior
-  const estimateVitalityPoints = () => {
-    let estimatedPoints = 0;
-    const activitiesCompleted = [];
+  // Get real spending data from uploaded analysis
+  const getSpendingData = () => {
+    if (realAnalysisResults && realAnalysisResults.category_breakdown) {
+      return Object.entries(realAnalysisResults.category_breakdown)
+        .filter(([_, data]) => data.amount > 0)
+        .map(([name, data]) => ({
+          name,
+          amount: data.amount,
+          percentage: data.percentage,
+          count: data.count,
+          suggestions:
+            realAnalysisResults.suggestions?.[name]?.suggestions || [],
+          potential_savings:
+            realAnalysisResults.suggestions?.[name]?.potential_savings || 0,
+        }))
+        .sort((a, b) => b.amount - a.amount);
+    } else if (financialData.categories) {
+      return financialData.categories;
+    }
+    return [];
+  };
 
-    // Basic health activities (assumed completed)
-    const basicActivities = {
-      health_check: "Annual health screening",
-      vitality_age_assessment: "Online health assessment",
-      blood_pressure_check: "Blood pressure screening",
-    };
-
-    for (const [activity, description] of Object.entries(basicActivities)) {
-      estimatedPoints += VITALITY_POINTS_ACTIVITIES[activity];
-      activitiesCompleted.push({
-        activity,
-        description,
-        points: VITALITY_POINTS_ACTIVITIES[activity],
-      });
+  // Use actual user profile for Vitality status
+  const getCurrentVitalityStatus = () => {
+    // If user profile has vitality status, use it
+    if (userProfile.vitalityStatus) {
+      return (
+        STATUS_TIERS.find(
+          (tier) =>
+            tier.name.toLowerCase() === userProfile.vitalityStatus.toLowerCase()
+        ) || STATUS_TIERS[1]
+      ); // Default to Bronze if not found
     }
 
-    // Estimate fitness points (assume 2-3 gym sessions per week)
-    const weeklyFitness = 3 * FITNESS_POINTS["gym_session"]; // 300 points/week
-    const annualFitness = Math.min(weeklyFitness * 52, 15600); // Cap at reasonable max
-    estimatedPoints += annualFitness;
-    activitiesCompleted.push({
-      activity: "fitness_activities",
-      description: "Regular gym sessions & exercise",
-      points: annualFitness,
-    });
+    // Otherwise estimate based on user profile data
+    let estimatedPoints = 0;
 
-    return { estimatedPoints, activitiesCompleted };
+    // Basic activities (most people do these)
+    estimatedPoints += VITALITY_POINTS_ACTIVITIES.health_check;
+    estimatedPoints += VITALITY_POINTS_ACTIVITIES.vitality_age_assessment;
+
+    // Age-based assumptions
+    if (userProfile.age && userProfile.age > 35) {
+      estimatedPoints += VITALITY_POINTS_ACTIVITIES.blood_pressure_check;
+      estimatedPoints += VITALITY_POINTS_ACTIVITIES.cholesterol_test;
+    }
+
+    // Risk tolerance suggests health consciousness
+    if (userProfile.riskTolerance === "conservative") {
+      estimatedPoints += VITALITY_POINTS_ACTIVITIES.biometric_screening;
+      estimatedPoints += 2 * FITNESS_POINTS.gym_session * 52; // 2x/week gym
+    } else if (userProfile.riskTolerance === "moderate") {
+      estimatedPoints += 3 * FITNESS_POINTS.gym_session * 52; // 3x/week gym
+    } else {
+      estimatedPoints += 4 * FITNESS_POINTS.gym_session * 52; // 4x/week gym
+    }
+
+    return determineStatus(estimatedPoints);
   };
 
   // Determine status based on points
@@ -119,479 +163,597 @@ const Vitality = ({
     return currentStatus;
   };
 
-  // Calculate Discovery Miles potential from spending
+  // Calculate Discovery Miles from real spending data
   const calculateDiscoveryMiles = (spendingData, status) => {
     const milesBreakdown = {};
     let totalMiles = 0;
 
-    if (!spendingData) return { totalMiles, milesBreakdown };
+    if (!spendingData || spendingData.length === 0)
+      return { totalMiles, milesBreakdown };
 
     // Process groceries for HealthyFood cashback
-    const grocerySpend =
-      spendingData.find((cat) => cat.name === "Groceries")?.amount || 0;
-    if (grocerySpend > 0) {
-      const qualifyingSpend = Math.min(grocerySpend * 0.3, 2500); // 30% assumed healthy, R2500 monthly limit
+    const groceryCategory = spendingData.find(
+      (cat) => cat.name === "Groceries"
+    );
+    if (groceryCategory && groceryCategory.amount > 0) {
+      // Estimate 25-35% of grocery spending is on healthy items
+      const healthyEstimate = 0.3;
+      const qualifyingSpend = Math.min(
+        groceryCategory.amount * healthyEstimate,
+        2500
+      ); // R2500 monthly limit
       const cashbackRate = HEALTHYFOOD_CASHBACK[status.name];
       const miles = qualifyingSpend * cashbackRate;
 
       milesBreakdown["Groceries"] = {
-        totalSpend: grocerySpend,
+        totalSpend: groceryCategory.amount,
         qualifyingSpend: qualifyingSpend,
         milesEarned: miles,
+        transactionCount: groceryCategory.count,
         description: `${(cashbackRate * 100).toFixed(
           0
         )}% back on healthy groceries`,
+        suggestions: groceryCategory.suggestions || [],
       };
       totalMiles += miles;
     }
 
-    // Process medical spending for HealthyCare cashback
-    const medicalCategories = ["Medical", "Healthcare", "Pharmacy"];
-    for (const categoryName of medicalCategories) {
-      const medicalSpend =
-        spendingData.find((cat) => cat.name === categoryName)?.amount || 0;
-      if (medicalSpend > 0) {
+    // Process medical/pharmacy spending for HealthyCare cashback
+    const healthCategories = [
+      "Medical",
+      "Healthcare",
+      "Pharmacy",
+      "Subscriptions",
+    ];
+    healthCategories.forEach((categoryName) => {
+      const category = spendingData.find((cat) => cat.name === categoryName);
+      if (category && category.amount > 0) {
+        // For subscriptions, only count medical aid/health insurance
+        let qualifyingSpend = category.amount;
+        if (categoryName === "Subscriptions") {
+          qualifyingSpend = category.amount * 0.3; // Estimate 30% is health-related
+        }
+
         const cashbackRate = HEALTHYCARE_CASHBACK[status.name];
-        const miles = medicalSpend * cashbackRate;
+        const miles = qualifyingSpend * cashbackRate;
 
         milesBreakdown[categoryName] = {
-          totalSpend: medicalSpend,
-          qualifyingSpend: medicalSpend,
+          totalSpend: category.amount,
+          qualifyingSpend: qualifyingSpend,
           milesEarned: miles,
+          transactionCount: category.count,
           description: `${(cashbackRate * 100).toFixed(
             0
           )}% back on health products`,
+          suggestions: category.suggestions || [],
         };
         totalMiles += miles;
       }
-    }
+    });
 
     return { totalMiles, milesBreakdown };
   };
 
-  // Get spending data from props
-  const getSpendingData = () => {
-    if (realAnalysisResults && realAnalysisResults.category_breakdown) {
-      return Object.entries(realAnalysisResults.category_breakdown).map(
-        ([name, data]) => ({
-          name,
-          amount: data.amount,
-          percentage: data.percentage,
-        })
-      );
-    } else if (financialData.categories) {
-      return financialData.categories;
-    }
-    return [];
-  };
-
-  // Simulate health improvement opportunities
-  const simulateHealthImprovement = (currentPoints) => {
-    const additionalActivities = {
-      dental_checkup: {
-        description: "Complete dental checkup",
-        points: VITALITY_POINTS_ACTIVITIES["dental_checkup"],
-      },
-      eye_test: {
-        description: "Complete eye test",
-        points: VITALITY_POINTS_ACTIVITIES["eye_test"],
-      },
-      cholesterol_test: {
-        description: "Complete cholesterol test",
-        points: VITALITY_POINTS_ACTIVITIES["cholesterol_test"],
-      },
-      nutritional_assessment: {
-        description: "Complete nutritional assessment",
-        points: VITALITY_POINTS_ACTIVITIES["nutritional_assessment"],
-      },
-    };
-
-    let improvedPoints = currentPoints;
-    const improvements = [];
-
-    for (const [activity, details] of Object.entries(additionalActivities)) {
-      improvedPoints += details.points;
-      improvements.push({
-        action: details.description,
-        points: details.points,
-        category: "Health Activities",
-      });
-    }
-
-    // Add more fitness activities
-    const additionalFitness = 2 * FITNESS_POINTS["gym_session"] * 52; // +2 gym sessions/week
-    improvedPoints += additionalFitness;
-    improvements.push({
-      action: "Increase gym visits to 5x per week",
-      points: additionalFitness,
-      category: "Fitness",
-    });
-
-    return { improvedPoints, improvements };
-  };
-
-  // Generate spending optimization suggestions
+  // Generate spending optimizations based on real data
   const generateSpendingOptimizations = (spendingData, currentStatus) => {
     const suggestions = [];
 
     if (!spendingData || spendingData.length === 0) return suggestions;
 
-    // Suggest shifting entertainment/dining spending to groceries
-    const entertainmentSpend =
-      spendingData.find((cat) =>
-        ["Entertainment", "Dining Out"].includes(cat.name)
-      )?.amount || 0;
+    // Find dining out and entertainment spending
+    const diningOut = spendingData.find((cat) => cat.name === "Dining Out");
+    const groceries = spendingData.find((cat) => cat.name === "Groceries");
 
-    const grocerySpend =
-      spendingData.find((cat) => cat.name === "Groceries")?.amount || 0;
-
-    if (entertainmentSpend > 0 && grocerySpend > 0) {
-      const shiftAmount = Math.min(entertainmentSpend * 0.3, 500);
-      const currentMiles =
-        grocerySpend * 0.3 * HEALTHYFOOD_CASHBACK[currentStatus.name];
-      const newMiles =
-        (grocerySpend + shiftAmount) *
+    if (diningOut && groceries && diningOut.amount > 500) {
+      const shiftAmount = Math.min(diningOut.amount * 0.25, 750); // Shift 25% or max R750
+      const currentGroceryMiles =
+        groceries.amount * 0.3 * HEALTHYFOOD_CASHBACK[currentStatus.name];
+      const newGroceryMiles =
+        (groceries.amount + shiftAmount) *
         0.3 *
         HEALTHYFOOD_CASHBACK[currentStatus.name];
-      const milesGain = newMiles - currentMiles;
+      const milesGain = newGroceryMiles - currentGroceryMiles;
 
       suggestions.push({
-        action: `Shift R${shiftAmount.toFixed(
+        action: `Reduce dining out by R${shiftAmount.toFixed(
           0
-        )} from dining out to healthy groceries`,
-        benefit: `Earn additional R${milesGain.toFixed(0)} in Discovery Miles`,
-        explanation:
-          "Cook more at home, eat out less - earn cashback on healthy ingredients",
+        )}, cook more at home`,
+        benefit: `Earn extra R${milesGain.toFixed(
+          0
+        )} Discovery Miles + save on potential costs`,
+        explanation: `You spend R${diningOut.amount.toLocaleString()} on dining out. Cooking healthy meals earns cashback.`,
         category: "Spending Optimization",
+        currentSpend: diningOut.amount,
+        potentialSavings: shiftAmount * 0.7, // Cooking costs ~30% of dining out
       });
     }
 
-    // Suggest using Discovery partners
-    suggestions.push({
-      action: "Shop at Clicks or Dis-Chem for health products",
-      benefit: `Earn ${(HEALTHYCARE_CASHBACK[currentStatus.name] * 100).toFixed(
-        0
-      )}% back in Discovery Miles`,
-      explanation:
-        "Use Discovery partners for vitamins, supplements, and health products",
-      category: "Partner Benefits",
-    });
+    // Subscription optimization for health benefits
+    const subscriptions = spendingData.find(
+      (cat) => cat.name === "Subscriptions"
+    );
+    if (subscriptions && subscriptions.amount > 1000) {
+      suggestions.push({
+        action: "Review subscriptions, prioritize health & fitness apps",
+        benefit: `Keep R${(
+          subscriptions.amount *
+          0.3 *
+          HEALTHYCARE_CASHBACK[currentStatus.name]
+        ).toFixed(0)} monthly cashback on health subscriptions`,
+        explanation: `You spend R${subscriptions.amount.toLocaleString()} on subscriptions. Health-related ones earn Discovery Miles.`,
+        category: "Partner Benefits",
+        currentSpend: subscriptions.amount,
+        potentialSavings: subscriptions.potential_savings || 0,
+      });
+    }
+
+    // Suggest using Discovery partners based on real spending
+    const totalHealthSpend = spendingData
+      .filter((cat) =>
+        ["Groceries", "Medical", "Healthcare", "Pharmacy"].includes(cat.name)
+      )
+      .reduce((sum, cat) => sum + cat.amount, 0);
+
+    if (totalHealthSpend > 0) {
+      suggestions.push({
+        action: "Shop at Discovery partners (Clicks, Dis-Chem, Pick n Pay)",
+        benefit: `Maximize your R${totalHealthSpend.toLocaleString()} monthly health spending for ${(
+          HEALTHYCARE_CASHBACK[currentStatus.name] * 100
+        ).toFixed(0)}% cashback`,
+        explanation:
+          "Use Discovery partners for vitamins, supplements, and groceries to earn maximum Miles",
+        category: "Partner Benefits",
+        currentSpend: totalHealthSpend,
+        potentialSavings: 0,
+      });
+    }
 
     return suggestions;
   };
 
-  // Calculate everything
+  // Calculate potential status improvement
+  const calculateStatusImprovement = (currentStatus) => {
+    const nextTierIndex =
+      STATUS_TIERS.findIndex((tier) => tier.name === currentStatus.name) + 1;
+    if (nextTierIndex >= STATUS_TIERS.length) return null;
+
+    const nextTier = STATUS_TIERS[nextTierIndex];
+    const pointsNeeded = nextTier.threshold - (currentStatus.threshold || 0);
+
+    const improvements = [
+      {
+        action: "Complete annual health screening",
+        points: VITALITY_POINTS_ACTIVITIES.health_check,
+        category: "Health Activities",
+        description: "Essential annual check-up",
+      },
+      {
+        action: "Complete dental checkup",
+        points: VITALITY_POINTS_ACTIVITIES.dental_checkup,
+        category: "Health Activities",
+        description: "Six-monthly dental visit",
+      },
+      {
+        action: "Get eye test",
+        points: VITALITY_POINTS_ACTIVITIES.eye_test,
+        category: "Health Activities",
+        description: "Annual eye examination",
+      },
+      {
+        action: "Increase gym visits to 4x per week",
+        points: FITNESS_POINTS.gym_session * 52, // +1 session per week
+        category: "Fitness",
+        description: "Additional weekly gym session",
+      },
+      {
+        action: "Complete biometric screening",
+        points: VITALITY_POINTS_ACTIVITIES.biometric_screening,
+        category: "Health Activities",
+        description: "Blood pressure, cholesterol, glucose tests",
+      },
+    ];
+
+    return {
+      nextTier,
+      pointsNeeded,
+      improvements: improvements.slice(0, 4), // Show top 4 realistic improvements
+    };
+  };
+
+  // Calculate everything with real data
   const spendingData = getSpendingData();
-  const { estimatedPoints, activitiesCompleted } = estimateVitalityPoints();
-  const currentStatus = determineStatus(estimatedPoints);
+  const currentStatus = getCurrentVitalityStatus();
   const { totalMiles, milesBreakdown } = calculateDiscoveryMiles(
     spendingData,
     currentStatus
   );
-  const { improvedPoints, improvements } =
-    simulateHealthImprovement(estimatedPoints);
-  const improvedStatus = determineStatus(improvedPoints);
   const spendingOptimizations = generateSpendingOptimizations(
     spendingData,
     currentStatus
   );
+  const statusImprovement = calculateStatusImprovement(currentStatus);
 
-  const improvementPointsGain = improvedPoints - estimatedPoints;
+  // Calculate total spending for context
+  const totalMonthlySpending = spendingData.reduce(
+    (sum, cat) => sum + cat.amount,
+    0
+  );
+  const totalQualifyingSpend = Object.values(milesBreakdown).reduce(
+    (sum, breakdown) => sum + breakdown.qualifyingSpend,
+    0
+  );
+
+  // Enhanced mode indicator
+  const enhancedMode = realAnalysisResults?.enhanced_mode;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Vitality Status Overview */}
-      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-6 rounded-xl border border-discovery-gold/20">
-        <h2 className="text-xl font-bold mb-2 text-discovery-blue">
+      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-4 rounded-lg border border-discovery-gold/20">
+        <h2 className="text-sm font-bold mb-2 text-discovery-blue">
           Discovery Vitality Status
         </h2>
-        <p className="text-gray-600 mb-4">
+        <p className="text-xs text-gray-600 mb-2">
           Earn points through health activities & fitness to unlock rewards
         </p>
+        {enhancedMode && (
+          <div className="text-xs text-discovery-gold mb-2 flex items-center">
+            <Sparkles className="w-3 h-3 mr-1" />
+            Based on your real financial data analysis
+          </div>
+        )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-discovery-gold/20">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Current Status</span>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-white p-2 rounded-lg border border-discovery-gold/20">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-600">Current Status</span>
               <span
-                className={`px-2 py-1 rounded-full text-xs font-semibold ${currentStatus.bgColor} ${currentStatus.color}`}
+                className={`px-1 py-1 rounded-full text-[10px] font-semibold ${currentStatus.bgColor} ${currentStatus.color}`}
               >
                 {currentStatus.name}
               </span>
             </div>
-            <p className="text-2xl font-bold text-discovery-blue">
-              {estimatedPoints.toLocaleString()} points
+            <p className="text-sm font-bold text-discovery-blue">
+              {userProfile.vitalityStatus || "Estimated"}
             </p>
-            <p className="text-xs text-gray-500">Annual points earned</p>
+            <p className="text-[10px] text-gray-500">
+              {userProfile.vitalityStatus
+                ? "Your current tier"
+                : "Based on profile"}
+            </p>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-discovery-gold/20">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Discovery Miles</span>
-              <span className="text-xs bg-discovery-gold/20 text-discovery-gold px-2 py-1 rounded">
+          <div className="bg-white p-2 rounded-lg border border-discovery-gold/20">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-600">Discovery Miles</span>
+              <span className="text-[10px] bg-discovery-gold/20 text-discovery-gold px-1 py-1 rounded">
                 Monthly
               </span>
             </div>
-            <p className="text-2xl font-bold text-discovery-gold">
+            <p className="text-sm font-bold text-discovery-gold">
               R{totalMiles.toFixed(0)}
             </p>
-            <p className="text-xs text-gray-500">From qualifying spending</p>
+            <p className="text-[10px] text-gray-500">
+              From your actual spending
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Discovery Miles from Spending */}
-      <div className="bg-white p-6 rounded-xl border border-discovery-gold/20 shadow-sm">
-        <h3 className="text-lg font-semibold mb-4 text-discovery-blue flex items-center">
-          <span className="mr-2 text-discovery-gold text-xl">💰</span>
-          Discovery Miles from Spending
+      {/* Discovery Miles from Real Spending */}
+      <div className="bg-white p-2 rounded-lg border border-discovery-gold/20 shadow-sm">
+        <h3 className="text-xs font-semibold mb-2 text-discovery-blue flex items-center">
+          <DollarSign className="w-3 h-3 mr-1 text-discovery-gold" />
+          Discovery Miles from Your Spending
         </h3>
 
-        <div className="mb-4 p-4 bg-discovery-gold/10 rounded-lg">
+        <div className="mb-2 p-2 bg-discovery-gold/10 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-semibold text-discovery-gold">
-                Monthly Discovery Miles
+              <p className="font-semibold text-discovery-gold text-xs">
+                Monthly Discovery Miles: R{totalMiles.toFixed(0)}
               </p>
-              <p className="text-sm text-gray-600">
-                Cashback rewards from partner spending
+              <p className="text-[10px] text-gray-600">
+                From R{totalQualifyingSpend.toFixed(0)} qualifying spend of R
+                {totalMonthlySpending.toLocaleString()} total
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-discovery-gold">
-                R{totalMiles.toFixed(0)}
+              <p className="text-xs font-bold text-discovery-blue">
+                {totalQualifyingSpend > 0
+                  ? ((totalMiles / totalQualifyingSpend) * 100).toFixed(1)
+                  : 0}
+                %
               </p>
-              <p className="text-xs text-gray-500">per month</p>
+              <p className="text-[10px] text-gray-500">cashback rate</p>
             </div>
           </div>
         </div>
 
         {Object.keys(milesBreakdown).length > 0 ? (
-          <div className="space-y-3">
-            <h4 className="font-medium text-discovery-blue">
-              Breakdown by category:
-            </h4>
+          <div className="space-y-1">
             {Object.entries(milesBreakdown).map(([category, details]) => (
               <div
                 key={category}
-                className="p-3 border border-discovery-gold/20 rounded-lg"
+                className="p-1 border border-discovery-gold/20 rounded-lg"
               >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-discovery-blue">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="font-medium text-discovery-blue flex items-center text-[10px]">
+                    {category === "Groceries" ? (
+                      <ShoppingCart className="w-2 h-2 mr-1" />
+                    ) : (
+                      <Pill className="w-2 h-2 mr-1" />
+                    )}
                     {category}
+                    <span className="ml-1 text-gray-500">
+                      ({details.transactionCount} transactions)
+                    </span>
                   </span>
-                  <span className="text-discovery-gold font-bold">
+                  <span className="text-discovery-gold font-bold text-[10px]">
                     R{details.milesEarned.toFixed(0)}
                   </span>
                 </div>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p>Total spent: R{details.totalSpend.toFixed(0)}</p>
-                  <p>Qualifying spend: R{details.qualifyingSpend.toFixed(0)}</p>
+                <div className="text-[10px] text-gray-600 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Total spent: R{details.totalSpend.toFixed(0)}</span>
+                    <span>
+                      Qualifying: R{details.qualifyingSpend.toFixed(0)}
+                    </span>
+                  </div>
                   <p className="text-discovery-gold">{details.description}</p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-6 text-gray-500">
-            <p>Upload your bank statement to see Discovery Miles potential</p>
+          <div className="text-center py-2 text-gray-500 text-xs">
+            <p>No qualifying health-related spending detected</p>
+            <p className="text-[10px]">
+              Shop at Discovery partners for cashback rewards
+            </p>
           </div>
         )}
       </div>
 
-      {/* Spending & Discovery Benefits */}
-      <div className="bg-white p-6 rounded-xl border border-discovery-gold/20 shadow-sm">
-        <h3 className="text-lg font-semibold mb-4 text-discovery-blue flex items-center">
-          <span className="mr-2 text-discovery-gold text-xl">🎯</span>
+      {/* Real Spending Breakdown with Discovery Benefits */}
+      <div className="bg-white p-2 rounded-lg border border-discovery-gold/20 shadow-sm">
+        <h3 className="text-xs font-semibold mb-2 text-discovery-blue flex items-center">
+          <Target className="w-3 h-3 mr-1 text-discovery-gold" />
           Your Spending & Discovery Benefits
         </h3>
 
-        <div className="space-y-3">
+        <div className="space-y-1">
           {spendingData.length > 0 ? (
-            spendingData.map((category, idx) => {
+            spendingData.slice(0, 8).map((category, idx) => {
               const hasDiscoveryBenefit = [
                 "Groceries",
                 "Medical",
                 "Healthcare",
                 "Pharmacy",
               ].includes(category.name);
+
+              const isPartialBenefit = category.name === "Subscriptions";
+
               return (
                 <div
                   key={idx}
-                  className={`p-3 rounded-lg border ${
+                  className={`p-1 rounded-lg border ${
                     hasDiscoveryBenefit
                       ? "border-discovery-gold/30 bg-discovery-gold/5"
+                      : isPartialBenefit
+                      ? "border-discovery-blue/30 bg-discovery-blue/5"
                       : "border-gray-200"
                   }`}
                 >
                   <div className="flex justify-between items-center">
-                    <div>
-                      <span className="font-medium text-discovery-blue">
-                        {category.name}
-                      </span>
-                      <p className="text-xs text-gray-600">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-discovery-blue flex items-center text-[10px]">
+                          {category.name === "Groceries" ? (
+                            <ShoppingCart className="w-2 h-2 mr-1" />
+                          ) : category.name === "Dining Out" ? (
+                            <Coffee className="w-2 h-2 mr-1" />
+                          ) : category.name === "Subscriptions" ? (
+                            <Smartphone className="w-2 h-2 mr-1" />
+                          ) : hasDiscoveryBenefit ? (
+                            <Pill className="w-2 h-2 mr-1" />
+                          ) : (
+                            <DollarSign className="w-2 h-2 mr-1" />
+                          )}
+                          {category.name}
+                          <span className="ml-1 text-gray-500">
+                            ({category.count})
+                          </span>
+                        </span>
+                        <span className="font-bold text-discovery-blue text-[10px]">
+                          R{category.amount.toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-600 mt-0.5">
                         {hasDiscoveryBenefit
                           ? category.name === "Groceries"
-                            ? "Healthy groceries only (fruits, vegetables, etc.)"
-                            : "Vitamins, supplements, health products"
+                            ? `Healthy items: ~R${(
+                                category.amount * 0.3
+                              ).toFixed(0)} (${(
+                                HEALTHYFOOD_CASHBACK[currentStatus.name] * 100
+                              ).toFixed(0)}% cashback)`
+                            : `Health products: ${(
+                                HEALTHYCARE_CASHBACK[currentStatus.name] * 100
+                              ).toFixed(0)}% cashback available`
+                          : isPartialBenefit
+                          ? `Health subscriptions: ~R${(
+                              category.amount * 0.3
+                            ).toFixed(0)} eligible for cashback`
+                          : category.potential_savings > 0
+                          ? `Optimization potential: R${category.potential_savings.toFixed(
+                              0
+                            )}/month`
                           : "No specific Discovery benefit"}
                       </p>
                     </div>
-                    <span className="font-bold text-discovery-blue">
-                      R{category.amount.toLocaleString()}
-                    </span>
                   </div>
                 </div>
               );
             })
           ) : (
-            <div className="text-center py-6 text-gray-500">
+            <div className="text-center py-2 text-gray-500 text-xs">
               <p>Upload your bank statement to see spending breakdown</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Improvement Opportunities */}
-      {improvedStatus.name !== currentStatus.name && (
-        <div className="bg-white p-6 rounded-xl border border-discovery-gold/20 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 text-discovery-blue flex items-center">
-            <span className="mr-2 text-discovery-gold text-xl">🚀</span>
-            Improvement Opportunities
+      {/* Status Improvement Opportunities */}
+      {statusImprovement && (
+        <div className="bg-white p-2 rounded-lg border border-discovery-gold/20 shadow-sm">
+          <h3 className="text-xs font-semibold mb-2 text-discovery-blue flex items-center">
+            <TrendingUp className="w-3 h-3 mr-1 text-discovery-gold" />
+            Path to {statusImprovement.nextTier.name} Status
           </h3>
 
-          <div className="bg-discovery-gold/10 p-4 rounded-lg mb-4">
+          <div className="mb-2 p-1 bg-discovery-gold/10 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-discovery-gold">
-                  Potential Status: {improvedStatus.name}
+                <p className="font-semibold text-discovery-gold text-[10px]">
+                  Next Status: {statusImprovement.nextTier.name}
                 </p>
-                <p className="text-sm text-gray-600">
-                  With {improvedPoints.toLocaleString()} points
+                <p className="text-[10px] text-gray-600">
+                  Unlocks{" "}
+                  {(
+                    HEALTHYFOOD_CASHBACK[statusImprovement.nextTier.name] * 100
+                  ).toFixed(0)}
+                  % grocery cashback &{" "}
+                  {(
+                    HEALTHYCARE_CASHBACK[statusImprovement.nextTier.name] * 100
+                  ).toFixed(0)}
+                  % health cashback
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-discovery-gold">
-                  +{improvementPointsGain.toLocaleString()}
+                <p className="text-xs font-bold text-discovery-gold">
+                  {statusImprovement.pointsNeeded.toLocaleString()}
                 </p>
-                <p className="text-xs text-gray-500">additional points</p>
+                <p className="text-[10px] text-gray-500">points needed</p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <h4 className="font-medium text-discovery-blue">
-              To achieve this:
-            </h4>
-            {improvements.slice(0, 4).map((improvement, idx) => (
+          <div className="space-y-1">
+            {statusImprovement.improvements.map((improvement, idx) => (
               <div
                 key={idx}
-                className="p-3 border border-discovery-gold/20 rounded-lg"
+                className="p-1 border border-discovery-gold/20 rounded-lg"
               >
-                <div className="flex justify-between items-start mb-1">
-                  <span className="text-sm font-medium text-discovery-blue">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-medium text-discovery-blue flex items-center">
+                    {improvement.category === "Health Activities" ? (
+                      <Heart className="w-2 h-2 mr-1" />
+                    ) : (
+                      <Activity className="w-2 h-2 mr-1" />
+                    )}
                     {improvement.action}
                   </span>
-                  <span className="bg-discovery-gold text-white text-xs px-2 py-1 rounded-full">
+                  <span className="bg-discovery-gold text-white text-[10px] px-1 py-0.5 rounded-full">
                     +{improvement.points.toLocaleString()}
                   </span>
                 </div>
-                <span className="bg-discovery-blue/10 text-discovery-blue text-xs px-2 py-1 rounded">
-                  {improvement.category}
-                </span>
+                <p className="text-[10px] text-gray-600 ml-3">
+                  {improvement.description}
+                </p>
               </div>
             ))}
           </div>
 
           {totalMiles > 0 && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-800">
-                <strong>Bonus:</strong> Higher status = more Discovery Miles
-                from your spending!
+            <div className="mt-2 p-1 bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 border border-discovery-gold/20 rounded-lg">
+              <p className="text-[10px] text-discovery-blue">
+                <strong>Impact:</strong> Higher status could earn you an extra R
+                {(
+                  (HEALTHYFOOD_CASHBACK[statusImprovement.nextTier.name] -
+                    HEALTHYFOOD_CASHBACK[currentStatus.name]) *
+                  totalQualifyingSpend
+                ).toFixed(0)}
+                /month from your current spending!
               </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Spending Optimization Tips */}
+      {/* Real Data-Based Spending Optimization */}
       {spendingOptimizations.length > 0 && (
-        <div className="bg-white p-6 rounded-xl border border-discovery-gold/20 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 text-discovery-blue flex items-center">
-            <span className="mr-2 text-discovery-gold text-xl">💡</span>
-            Spending Optimization Tips
+        <div className="bg-white p-2 rounded-lg border border-discovery-gold/20 shadow-sm">
+          <h3 className="text-xs font-semibold mb-2 text-discovery-blue flex items-center">
+            <Lightbulb className="w-3 h-3 mr-1 text-discovery-gold" />
+            Personalized Optimization Tips
           </h3>
 
-          <div className="space-y-4">
+          <div className="space-y-2">
             {spendingOptimizations.map((suggestion, idx) => (
               <div
                 key={idx}
-                className="p-4 border border-discovery-gold/20 rounded-lg"
+                className="p-2 border border-discovery-gold/20 rounded-lg"
               >
-                <h4 className="font-semibold text-discovery-blue text-sm mb-2">
-                  {suggestion.action}
-                </h4>
-                <p className="text-sm text-discovery-gold mb-1">
-                  <strong>Benefit:</strong> {suggestion.benefit}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <strong>Why:</strong> {suggestion.explanation}
-                </p>
-                <span className="bg-discovery-blue/10 text-discovery-blue text-xs px-2 py-1 rounded mt-2 inline-block">
-                  {suggestion.category}
-                </span>
+                <div className="flex items-start space-x-1">
+                  <ArrowRight className="w-2 h-2 text-discovery-gold mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-discovery-blue text-[10px] mb-0.5">
+                      {suggestion.action}
+                    </h4>
+                    <p className="text-[10px] text-discovery-gold mb-0.5">
+                      <strong>Benefit:</strong> {suggestion.benefit}
+                    </p>
+                    <p className="text-[10px] text-gray-600">
+                      {suggestion.explanation}
+                    </p>
+                    {suggestion.potentialSavings > 0 && (
+                      <p className="text-[10px] text-green-600 mt-0.5">
+                        Additional savings: R
+                        {suggestion.potentialSavings.toFixed(0)}/month
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Financial Literacy Academy */}
-      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-6 rounded-xl border border-discovery-gold/20">
-        <div className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-gradient-to-r from-discovery-gold to-discovery-blue rounded-full flex items-center justify-center">
-            <span className="text-white text-2xl">🛡️</span>
-          </div>
-          <h3 className="text-lg font-semibold mb-2 text-discovery-blue">
-            Financial Literacy Academy
-          </h3>
-          <p className="text-gray-600 mb-4 text-sm">
-            Boost your financial knowledge and earn Vitality points through
-            interactive learning modules
-          </p>
-          <a
-            href="https://dainty-bonbon-de4898.netlify.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-discovery-gold to-discovery-blue text-white rounded-lg font-semibold hover:from-discovery-gold/90 hover:to-discovery-blue/90 transition-all transform hover:scale-[1.02] shadow-lg"
-          >
-            <span className="mr-2 text-xl">🛡️</span>
-            Access Academy
-          </a>
-          <p className="text-xs text-gray-500 mt-3">
-            Complete courses to improve your financial wellness and earn rewards
-          </p>
-        </div>
-      </div>
-
       {/* Important Notes */}
-      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-6 rounded-xl border border-discovery-gold/20">
-        <h3 className="text-lg font-semibold mb-4 text-discovery-blue">
-          📝 Important Notes
+      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-2 rounded-lg border border-discovery-gold/20">
+        <h3 className="text-xs font-semibold mb-2 text-discovery-blue flex items-center">
+          <Info className="w-3 h-3 mr-1" />
+          Key Insights
         </h3>
-        <div className="space-y-2 text-sm text-gray-700">
-          <p>
-            • Vitality points come from health activities & fitness, not
-            spending
+        <div className="space-y-1 text-[10px] text-gray-700">
+          <p className="flex items-start">
+            <span className="mr-1">•</span>
+            Analysis based on your{" "}
+            {spendingData.reduce((sum, cat) => sum + cat.count, 0)} actual
+            transactions
           </p>
-          <p>• Discovery Miles are the spending rewards (like cashback)</p>
-          <p>• Points reset annually; status determines your reward rates</p>
-          <p>• HealthyFood cashback only applies to qualifying healthy items</p>
-          <p>
-            • Monthly spend limits apply to cashback benefits (R2,500 for
-            individuals)
+          <p className="flex items-start">
+            <span className="mr-1">•</span>R{totalQualifyingSpend.toFixed(0)} of
+            your R{totalMonthlySpending.toLocaleString()} spending earns
+            Discovery Miles
           </p>
-          <p>• This analysis is based on 2025 Vitality program structure</p>
+          <p className="flex items-start">
+            <span className="mr-1">•</span>
+            HealthyFood cashback applies only to qualifying healthy items
+            (fruits, vegetables, etc.)
+          </p>
+          <p className="flex items-start">
+            <span className="mr-1">•</span>
+            Monthly limits: R2,500 HealthyFood cashback for individuals
+          </p>
+          {enhancedMode && (
+            <p className="flex items-start">
+              <span className="mr-1">•</span>
+              Enhanced AI analysis provides personalized recommendations based
+              on your patterns
+            </p>
+          )}
         </div>
       </div>
     </div>

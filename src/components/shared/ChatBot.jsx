@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Bot } from "lucide-react";
 
 const ChatBot = ({
   showChatbot,
@@ -28,6 +29,11 @@ const ChatBot = ({
     debtAnalysis && (debtAnalysis.avalanche || debtAnalysis.snowball);
   const hasInvestmentData = investmentAnalysis && investmentAnalysis.profiles;
 
+  // Check if user has debt payments detected but no debt analysis
+  const hasDetectedDebtPayments =
+    realAnalysisResults?.transactions?.some((t) => t.IsDebtPayment) || false;
+  const needsDebtStatement = hasDetectedDebtPayments && !hasDebtData;
+
   // Update conversation context when new messages are added
   useEffect(() => {
     if (chatMessages.length > 0) {
@@ -51,7 +57,8 @@ const ChatBot = ({
         100
       ).toFixed(1);
 
-      const categoryData = Object.entries(
+      // Enhanced category breakdown with detailed insights
+      const categoryDetails = Object.entries(
         realAnalysisResults.category_breakdown
       )
         .filter(([_, data]) => data.amount > 0)
@@ -59,13 +66,34 @@ const ChatBot = ({
           ([name, data]) =>
             `${name}: R${data.amount.toLocaleString()} (${data.percentage.toFixed(
               1
-            )}%)`
+            )}%, ${data.count} transactions)`
         )
         .join(", ");
 
       const potentialSavings = Object.values(
         realAnalysisResults.suggestions
       ).reduce((sum, s) => sum + (s.potential_savings || 0), 0);
+
+      // Detailed suggestions breakdown
+      const suggestionDetails = Object.entries(realAnalysisResults.suggestions)
+        .filter(([_, data]) => data.potential_savings > 50) // Only significant savings
+        .map(
+          ([category, data]) =>
+            `${category}: Could save R${data.potential_savings.toFixed(
+              0
+            )}/month - ${data.suggestions[0]}`
+        )
+        .join("; ");
+
+      // Detected debt payments
+      const debtPayments =
+        realAnalysisResults.transactions
+          ?.filter((t) => t.IsDebtPayment)
+          ?.map(
+            (t) =>
+              `${t.DebtName}: R${Math.abs(t["Amount (ZAR)"])} (${t.DebtKind})`
+          )
+          .join(", ") || "None detected";
 
       context.budget = {
         monthlyIncome: realAnalysisResults.total_income,
@@ -74,55 +102,108 @@ const ChatBot = ({
         optimizedAvailableIncome:
           realAnalysisResults.optimized_available_income,
         savingsRate: savingsRate,
-        categoryBreakdown: categoryData,
+        categoryBreakdown: categoryDetails,
         potentialMonthlySavings: potentialSavings,
+        detailedSuggestions: suggestionDetails,
         transactionCount: Object.values(
           realAnalysisResults.category_breakdown
         ).reduce((sum, cat) => sum + cat.count, 0),
+        enhancedMode: realAnalysisResults.enhanced_mode,
+        detectedDebtPayments: debtPayments,
+        hasDetectedDebtPayments: hasDetectedDebtPayments,
+        needsDebtStatement: needsDebtStatement,
+        largestExpenseCategories: Object.entries(
+          realAnalysisResults.category_breakdown
+        )
+          .filter(([_, data]) => data.amount > 0)
+          .sort((a, b) => b[1].amount - a[1].amount)
+          .slice(0, 3)
+          .map(([name, data]) => `${name} (R${data.amount.toLocaleString()})`)
+          .join(", "),
       };
     }
 
-    // Debt Analysis
+    // Enhanced Debt Analysis
     if (hasDebtData) {
       const recommendedStrategy = debtAnalysis.recommendation || "avalanche";
       const strategy = debtAnalysis[recommendedStrategy];
+      const alternativeStrategy =
+        recommendedStrategy === "avalanche" ? "snowball" : "avalanche";
+      const altStrategy = debtAnalysis[alternativeStrategy];
+
+      // Calculate minimum payment scenario for comparison
+      const totalBalance =
+        debtAnalysis.debts_uploaded?.reduce(
+          (sum, debt) => sum + debt.balance,
+          0
+        ) || 0;
+      const totalMinPayments =
+        debtAnalysis.debts_uploaded?.reduce(
+          (sum, debt) => sum + debt.min_payment,
+          0
+        ) || 0;
 
       context.debt = {
         recommendedStrategy: recommendedStrategy,
         monthsToDebtFree: strategy?.months_to_debt_free,
         totalInterestPaid: strategy?.total_interest_paid,
         interestSaved: strategy?.interest_saved_vs_min_only,
-        totalDebts: strategy?.debts?.length || 0,
+        totalDebts: debtAnalysis.debts_uploaded?.length || 0,
         payoffOrder: strategy?.payoff_order || [],
-        totalDebtAmount:
-          strategy?.debts?.reduce(
-            (sum, debt) => sum + debt.starting_balance,
-            0
-          ) || 0,
-        monthlyPayments:
-          strategy?.debts?.reduce((sum, debt) => sum + debt.min_payment, 0) ||
-          0,
+        totalDebtAmount: totalBalance,
+        monthlyPayments: totalMinPayments,
+        additionalBudget: strategy?.additional_budget || 0,
+        debtDetails:
+          debtAnalysis.debts_uploaded
+            ?.map(
+              (debt) =>
+                `${debt.name}: R${debt.balance.toLocaleString()} at ${(
+                  debt.apr * 100
+                ).toFixed(1)}% (min: R${debt.min_payment})`
+            )
+            .join("; ") || "",
         avalancheVsSnowball: {
           avalanche: {
             months: debtAnalysis.avalanche?.months_to_debt_free,
             interestSaved: debtAnalysis.avalanche?.interest_saved_vs_min_only,
+            totalInterest: debtAnalysis.avalanche?.total_interest_paid,
           },
           snowball: {
             months: debtAnalysis.snowball?.months_to_debt_free,
             interestSaved: debtAnalysis.snowball?.interest_saved_vs_min_only,
+            totalInterest: debtAnalysis.snowball?.total_interest_paid,
           },
         },
+        strategyComparison: `${recommendedStrategy} method: ${
+          strategy?.months_to_debt_free
+        } months, R${strategy?.total_interest_paid?.toLocaleString()} interest vs ${alternativeStrategy} method: ${
+          altStrategy?.months_to_debt_free
+        } months, R${altStrategy?.total_interest_paid?.toLocaleString()} interest`,
       };
     }
 
-    // Investment Analysis
+    // Enhanced Investment Analysis
     if (hasInvestmentData) {
       const monthlySavings = investmentAnalysis.monthly_savings;
+
+      // Extract detailed projections for each strategy
+      const strategyProjections = Object.entries(investmentAnalysis.profiles)
+        .map(([strategy, data]) => {
+          const projection10 = data.projections?.find((p) => p.years === 10);
+          const projection20 = data.projections?.find((p) => p.years === 20);
+          return `${strategy}: 10yr=R${
+            projection10?.effective_future_value?.toLocaleString() || "N/A"
+          }, 20yr=R${
+            projection20?.effective_future_value?.toLocaleString() || "N/A"
+          }`;
+        })
+        .join("; ");
 
       context.investment = {
         monthlySavings: monthlySavings,
         strategies: Object.keys(investmentAnalysis.profiles).join(", "),
         recommendations: investmentAnalysis.recommendations || [],
+        strategyProjections: strategyProjections,
         projections: {
           conservative:
             investmentAnalysis.profiles.conservative?.projections?.find(
@@ -135,6 +216,8 @@ const ChatBot = ({
             (p) => p.years === 10
           ),
         },
+        detailedRecommendations:
+          investmentAnalysis.recommendations?.join("; ") || "",
       };
     }
 
@@ -142,7 +225,7 @@ const ChatBot = ({
   };
 
   const generateSystemPrompt = (context) => {
-    let prompt = `You are a professional South African financial advisor AI assistant for Discovery Health's Financial AI app. You provide personalized, actionable financial advice based on the user's comprehensive real financial data.
+    let prompt = `You are a professional South African financial advisor AI assistant for Discovery Health's Financial AI app. You provide personalized, actionable financial advice based on the user's comprehensive real financial data analysis.
 
 USER PROFILE:
 - Name: ${userProfile.name}
@@ -154,7 +237,7 @@ USER PROFILE:
     if (context.budget) {
       prompt += `
 
-BUDGET ANALYSIS FROM USER'S BANK STATEMENT:
+COMPREHENSIVE BUDGET ANALYSIS FROM USER'S BANK STATEMENT:
 - Monthly Income: R${context.budget.monthlyIncome.toLocaleString()}
 - Monthly Expenses: R${context.budget.monthlyExpenses.toLocaleString()}
 - Available Income: R${context.budget.availableIncome.toLocaleString()}
@@ -162,83 +245,88 @@ BUDGET ANALYSIS FROM USER'S BANK STATEMENT:
         context.budget.optimizedAvailableIncome?.toLocaleString() || "N/A"
       }
 - Savings Rate: ${context.budget.savingsRate}%
-- Spending Categories: ${context.budget.categoryBreakdown}
+- Enhanced Mode: ${context.budget.enhancedMode ? "Yes" : "No"}
+- Transactions Analyzed: ${context.budget.transactionCount}
+- Largest Expense Categories: ${context.budget.largestExpenseCategories}
+- Detailed Spending: ${context.budget.categoryBreakdown}
 - Potential Monthly Savings: R${context.budget.potentialMonthlySavings.toLocaleString()}
-- Transactions Analyzed: ${context.budget.transactionCount}`;
+- Optimization Suggestions: ${context.budget.detailedSuggestions}
+- Detected Debt Payments: ${context.budget.detectedDebtPayments}
+- Needs Debt Statement Upload: ${
+        context.budget.needsDebtStatement
+          ? "YES - User has debt payments but no detailed debt analysis"
+          : "No"
+      }`;
     }
 
     // Add debt context if available
     if (context.debt) {
       prompt += `
 
-DEBT OPTIMIZATION ANALYSIS:
+COMPREHENSIVE DEBT OPTIMIZATION ANALYSIS:
 - Recommended Strategy: ${context.debt.recommendedStrategy} method
 - Time to Debt-Free: ${context.debt.monthsToDebtFree} months
-- Total Debt Amount: R${context.debt.totalDebtAmount.toLocaleString()}
+- Total Debt Amount: R${context.debt.totalDebtAmount.toLocaleString()} across ${
+        context.debt.totalDebts
+      } debts
 - Monthly Debt Payments: R${context.debt.monthlyPayments.toLocaleString()}
-- Interest Saved vs Min Payments: R${
+- Additional Budget Available: R${context.debt.additionalBudget.toLocaleString()}
+- Interest Saved vs Minimum Payments: R${
         context.debt.interestSaved?.toLocaleString() || "N/A"
       }
-- Payoff Order: ${context.debt.payoffOrder.join(" → ")}
-- Strategy Comparison: Avalanche saves R${
-        context.debt.avalancheVsSnowball.avalanche?.interestSaved?.toLocaleString() ||
-        "N/A"
-      } vs Snowball saves R${
-        context.debt.avalancheVsSnowball.snowball?.interestSaved?.toLocaleString() ||
-        "N/A"
-      }`;
+- Optimal Payoff Order: ${context.debt.payoffOrder.join(" → ")}
+- Debt Details: ${context.debt.debtDetails}
+- Strategy Comparison: ${context.debt.strategyComparison}`;
     }
 
     // Add investment context if available
     if (context.investment) {
       prompt += `
 
-INVESTMENT ANALYSIS:
+COMPREHENSIVE INVESTMENT ANALYSIS:
 - Available for Investment: R${context.investment.monthlySavings.toLocaleString()}/month
 - Investment Strategies Analyzed: ${context.investment.strategies}
-- 10-Year Projections:
-  * Conservative: R${
-    context.investment.projections.conservative?.effective_future_value?.toLocaleString() ||
-    "N/A"
-  }
-  * Moderate: R${
-    context.investment.projections.moderate?.effective_future_value?.toLocaleString() ||
-    "N/A"
-  }
-  * Aggressive: R${
-    context.investment.projections.aggressive?.effective_future_value?.toLocaleString() ||
-    "N/A"
-  }
-- Key Recommendations: ${context.investment.recommendations
-        .slice(0, 2)
-        .join("; ")}`;
+- Strategy Projections: ${context.investment.strategyProjections}
+- AI Recommendations: ${context.investment.detailedRecommendations}`;
+    }
+
+    // Add guidance for missing data
+    if (context.budget?.needsDebtStatement) {
+      prompt += `
+
+IMPORTANT NOTE: User has detected debt payments in their bank statement but hasn't uploaded a detailed debt statement yet. Strongly encourage them to upload their debt statement (CSV format with columns: name, balance, apr, min_payment, kind) for comprehensive debt optimization analysis.`;
     }
 
     prompt += `
 
 SOUTH AFRICAN CONTEXT:
 - Currency: South African Rand (ZAR)
-- Consider local banks: Discovery Bank, Standard Bank, FNB, ABSA, Nedbank
-- Local stores: Shoprite, Pick n Pay, Checkers, Woolworths, Spar
-- Local transport: Taxi, Uber, Bolt
-- Local services: DSTV, Vodacom, MTN, Eskom (electricity)
-- Consider Discovery Vitality benefits and points system
+- Local banks: Discovery Bank, Standard Bank, FNB, ABSA, Nedbank, Capitec
+- Local stores: Shoprite, Pick n Pay, Checkers, Woolworths, Spar, Makro
+- Local transport: Taxi, Uber, Bolt, Gautrain, public buses
+- Local services: DSTV/MultiChoice, Vodacom, MTN, Cell C, Rain, Eskom (electricity), municipal services
+- Discovery Vitality benefits: Earn points for healthy financial behaviors, medical aid discounts
 - Tax-Free Savings Account (TFSA) limit: R36,000/year
-- Retirement Annuity tax benefits
+- Retirement Annuity tax benefits: Up to 27.5% of income
+- Local investment options: Satrix ETFs, Allan Gray, Coronation, Old Mutual
 
 RESPONSE GUIDELINES:
-1. Be conversational, friendly, and encouraging
-2. Provide specific, actionable advice based on their actual data
-3. Reference their real spending patterns, debt situation, and investment capacity
-4. Suggest realistic South African solutions
-5. Keep responses concise but comprehensive (3-4 sentences max)
-6. Use South African Rand (R) for all amounts
-7. Consider Discovery Vitality integration opportunities
-8. Focus on practical South African financial products and services
-9. Maintain conversation context and refer to previous discussions when relevant
-10. Prioritize advice based on their most pressing financial needs (debt vs investment vs savings)
+1. Be conversational, friendly, and encouraging - use a warm South African tone
+2. Provide specific, actionable advice based on their actual analyzed data
+3. Reference their real spending patterns, debt situation, and investment capacity with specific amounts
+4. Quote exact figures from their analysis (e.g., "Your groceries of R5,300 could be reduced by R356 monthly")
+5. Suggest realistic South African solutions with local brands and services
+6. Keep responses comprehensive but readable (4-6 sentences max)
+7. Use South African Rand (R) for all amounts with proper formatting
+8. Consider Discovery Vitality integration opportunities
+9. Focus on practical South African financial products and services
+10. Maintain conversation context and refer to previous discussions
+11. Prioritize advice based on their most pressing financial needs (debt vs investment vs savings)
+12. If they need to upload debt statement, mention it prominently with clear instructions
+13. Reference specific categories and amounts from their analysis
+14. Provide context on why certain strategies are recommended based on their data
 
-Remember: You're helping South Africans improve their financial wellness through Discovery Health's AI platform using their comprehensive real financial data. Consider their full financial picture when giving advice.`;
+Remember: You have access to their complete financial picture including exact spending patterns, debt payments, and optimization opportunities. Use this data to provide highly personalized advice that's specifically relevant to their situation.`;
 
     return prompt;
   };
@@ -254,11 +342,11 @@ USER PROFILE:
 
 SOUTH AFRICAN CONTEXT:
 - Currency: South African Rand (ZAR)
-- Consider local banks: Discovery Bank, Standard Bank, FNB, ABSA, Nedbank
+- Local banks: Discovery Bank, Standard Bank, FNB, ABSA, Nedbank, Capitec
 - Local stores: Shoprite, Pick n Pay, Checkers, Woolworths, Spar
-- Local transport: Taxi, Uber, Bolt
-- Local services: DSTV, Vodacom, MTN, Eskom (electricity)
-- Consider Discovery Vitality benefits and points system
+- Local transport: Taxi, Uber, Bolt, Gautrain
+- Local services: DSTV, Vodacom, MTN, Cell C, Eskom (electricity)
+- Discovery Vitality benefits and points system
 - Tax-Free Savings Account (TFSA) limit: R36,000/year
 - Retirement Annuity tax benefits
 
@@ -270,7 +358,7 @@ RESPONSE GUIDELINES:
 5. Encourage them to upload their bank statement for personalized advice
 6. Focus on practical South African financial products and services
 7. Consider Discovery Vitality integration opportunities
-8. Maintain conversation context and refer to previous discussions when relevant
+8. Maintain conversation context and refer to previous discussions
 
 Remember: You're helping South Africans with general financial wellness. Encourage them to upload their bank statement for personalized advice based on their real spending patterns.`;
   };
@@ -334,7 +422,7 @@ Remember: You're helping South Africans with general financial wellness. Encoura
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 300,
+          maxOutputTokens: 400, // Increased for more detailed responses
         },
         safetySettings: [
           {
@@ -445,37 +533,61 @@ Remember: You're helping South Africans with general financial wellness. Encoura
     if (hasFinancialData) {
       const context = getComprehensiveFinancialContext();
 
-      if (context.budget?.savingsRate < 10) {
-        questions.push("How can I improve my savings rate?");
+      // High-priority questions based on their data
+      if (needsDebtStatement) {
+        questions.push(
+          "I see debt payments in my transactions - how do I upload my debt details?"
+        );
       }
 
-      if (hasDebtData && hasInvestmentData) {
-        questions.push("Should I focus on paying off debt or investing first?");
-      } else if (hasDebtData) {
-        questions.push(
-          `Why is the ${context.debt?.recommendedStrategy} method best for me?`
-        );
-      } else if (hasInvestmentData) {
-        questions.push("What investment strategy suits my risk tolerance?");
+      if (context.budget?.savingsRate < 10) {
+        questions.push("My savings rate is low - what should I do first?");
       }
 
       if (context.budget?.potentialMonthlySavings > 1000) {
-        questions.push("How should I allocate my potential savings?");
+        questions.push(
+          `How can I save the R${Math.round(
+            context.budget.potentialMonthlySavings
+          )} you identified?`
+        );
+      }
+
+      if (hasDebtData && hasInvestmentData) {
+        questions.push(
+          "Should I focus on debt or investing with my available money?"
+        );
+      } else if (hasDebtData) {
+        questions.push(
+          `Why do you recommend the ${context.debt?.recommendedStrategy} method for my debts?`
+        );
+      } else if (hasInvestmentData) {
+        questions.push(
+          "Which investment strategy suits my financial situation?"
+        );
       }
 
       questions.push("What's my biggest financial priority right now?");
       questions.push("How can I optimize my largest spending categories?");
+
+      if (context.budget?.largestExpenseCategories) {
+        questions.push(
+          `How can I reduce my spending on ${
+            context.budget.largestExpenseCategories.split(",")[0]
+          }?`
+        );
+      }
     } else {
       questions.push("How much should I be saving each month?");
       questions.push("What's the best way to start budgeting?");
       questions.push("Should I pay off debt or save first?");
       questions.push("What are good investment options in South Africa?");
+      questions.push("How do I upload my bank statement for analysis?");
     }
 
     return questions.slice(0, 3);
   };
 
-  // Data status indicator
+  // Enhanced data status indicator
   const getDataStatus = () => {
     const statuses = [];
     if (hasFinancialData) statuses.push("Budget");
@@ -492,15 +604,20 @@ Remember: You're helping South Africans with general financial wellness. Encoura
         )
       : 0;
 
-    return `✓ Using your real ${statuses.join(" + ")} data${
+    let status = `✓ Using your real ${statuses.join(" + ")} data${
       transactionCount ? ` (${transactionCount} transactions)` : ""
     }`;
+
+    if (needsDebtStatement) {
+      status += " ⚠️ Missing debt details";
+    }
+
+    return status;
   };
 
   // Always show the full chatbot interface
   return (
     <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 w-80 bg-white rounded-xl shadow-lg border border-discovery-gold/20 z-50 max-h-96 flex flex-col">
-      >
       <div className="p-4 border-b border-discovery-gold/20 bg-gradient-to-r from-discovery-gold to-discovery-blue text-white rounded-t-xl">
         <div className="flex justify-between items-center">
           <div>
@@ -524,7 +641,7 @@ Remember: You're helping South Africans with general financial wellness. Encoura
           <div className="text-center text-gray-500 py-4">
             <div className="mb-4">
               <div className="w-12 h-12 bg-discovery-gold/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                <span className="text-discovery-gold text-xl">🤖</span>
+                <Bot className="w-6 h-6 text-discovery-gold" />
               </div>
             </div>
             <p className="text-sm">
@@ -535,6 +652,16 @@ Remember: You're helping South Africans with general financial wellness. Encoura
                 ? "I can provide personalized advice based on your comprehensive financial analysis!"
                 : "I can help with general financial advice. Upload your bank statement for personalized insights!"}
             </p>
+
+            {/* Special message for debt statement upload */}
+            {needsDebtStatement && (
+              <div className="mt-3 p-2 bg-discovery-gold/10 rounded-lg border border-discovery-gold/20">
+                <p className="text-xs text-discovery-gold font-medium">
+                  💡 I noticed debt payments in your transactions! Upload your
+                  debt statement for detailed payoff strategies.
+                </p>
+              </div>
+            )}
 
             {/* Suggested Questions */}
             <div className="mt-4 space-y-2">
@@ -617,10 +744,10 @@ Remember: You're helping South Africans with general financial wellness. Encoura
         {/* Enhanced Data Status Indicator */}
         <div className="mt-2 text-center">
           <span
-            className={`text-xs px-2 py-1 rounded-full ${
+            className={`text-xs px-1 py-1 rounded-full ${
               hasFinancialData || hasDebtData || hasInvestmentData
-                ? "bg-green-100 text-green-800"
-                : "bg-blue-100 text-blue-800"
+                ? "bg-white text-discovery-gold"
+                : "bg-discovery-blue/20 text-discovery-blue"
             }`}
           >
             {getDataStatus()}

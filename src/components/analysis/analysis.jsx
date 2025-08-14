@@ -1,23 +1,52 @@
 import React from "react";
-import { Pie } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+// Remove Chart.js imports, keep Recharts
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+} from "recharts";
+import {
+  Home,
+  ShoppingCart,
+  Coffee,
+  Car,
+  Smartphone,
+  Store,
+  DollarSign,
+  FileText,
+  CreditCard,
+  AlertTriangle,
+  Target,
+  CheckCircle,
+  BarChart3,
+  Sparkles,
+  TrendingUp,
+  ArrowRight,
+} from "lucide-react";
 
-ChartJS.register(ArcElement, Tooltip, Legend);
-
-const Analysis = ({ financialData = {}, analysisResults = {}, realAnalysisResults = null }) => {
+const Analysis = ({
+  financialData = {},
+  analysisResults = {},
+  realAnalysisResults = null,
+}) => {
   const getIconForCategory = (categoryName) => {
     const iconMap = {
-      "Rent/Mortgage": "🏠",
-      Groceries: "🛒",
-      "Dining Out": "☕",
-      Transport: "🚗",
-      Subscriptions: "📱",
-      Shopping: "🛍️",
-      Other: "💰",
-      Administrative: "📋",
-      "Debt Payments": "💳",
+      "Rent/Mortgage": <Home className="w-3 h-3 text-blue-600" />,
+      Groceries: <ShoppingCart className="w-3 h-3 text-green-600" />,
+      "Dining Out": <Coffee className="w-3 h-3 text-orange-600" />,
+      Transport: <Car className="w-3 h-3 text-purple-600" />,
+      Subscriptions: <Smartphone className="w-3 h-3 text-blue-500" />,
+      Shopping: <Store className="w-3 h-3 text-pink-600" />,
+      Other: <DollarSign className="w-3 h-3 text-gray-600" />,
+      Administrative: <FileText className="w-3 h-3 text-indigo-600" />,
+      "Debt Payments": <CreditCard className="w-3 h-3 text-red-600" />,
     };
-    return iconMap[categoryName] || "💰";
+    return (
+      iconMap[categoryName] || <DollarSign className="w-3 h-3 text-gray-600" />
+    );
   };
 
   const getDisplayData = () => {
@@ -50,12 +79,12 @@ const Analysis = ({ financialData = {}, analysisResults = {}, realAnalysisResult
               realAnalysisResults.suggestions?.[name]?.suggestions || [],
           })),
         insights: generateInsightsFromBackend(realAnalysisResults),
-        transactionCount: Object.values(realAnalysisResults.category_breakdown || {}).reduce(
-          (sum, cat) => sum + (cat.count || 0),
-          0
-        ),
+        transactionCount: Object.values(
+          realAnalysisResults.category_breakdown || {}
+        ).reduce((sum, cat) => sum + (cat.count || 0), 0),
         transactions: realAnalysisResults.transactions || [],
         actionPlan: realAnalysisResults.action_plan || {},
+        debtPayments: getDebtPayments(realAnalysisResults.transactions || []),
       };
     } else {
       return {
@@ -67,8 +96,20 @@ const Analysis = ({ financialData = {}, analysisResults = {}, realAnalysisResult
         transactionCount: analysisResults?.transactionsFound || 0,
         enhancedMode: false,
         transactions: [],
+        debtPayments: [],
       };
     }
+  };
+
+  const getDebtPayments = (transactions) => {
+    return transactions
+      .filter((t) => t.IsDebtPayment && t.DebtName && t.DebtKind)
+      .map((t) => ({
+        name: t.DebtName,
+        amount: Math.abs(t["Amount (ZAR)"] || 0),
+        type: t.DebtKind,
+        description: t.Description,
+      }));
   };
 
   const generateInsightsFromBackend = (backendData = {}) => {
@@ -81,30 +122,43 @@ const Analysis = ({ financialData = {}, analysisResults = {}, realAnalysisResult
         title: "Enhanced AI Analysis Active",
         description:
           "Advanced statistical modeling and protected category detection enabled",
-        suggestion:
-          "Using South African household spending patterns for optimization",
-        impact: "More accurate recommendations",
+        actionableSteps: [
+          "Using South African household spending patterns",
+          "Protected categories automatically detected",
+          "More accurate optimization recommendations",
+        ],
+        impact: "Improved recommendation accuracy",
       });
     }
 
+    // Enhanced suggestions with actionable steps
     if (backendData.suggestions) {
       Object.entries(backendData.suggestions)
-        .filter(([_, s]) => s.potential_savings > 0)
-        .sort((a, b) => (b[1].priority || 1) - (a[1].priority || 1))
-        .slice(0, 3)
+        .filter(([_, s]) => s.potential_savings > 100) // Only show significant savings
+        .sort(
+          (a, b) =>
+            (b[1].potential_savings || 0) - (a[1].potential_savings || 0)
+        )
+        .slice(0, 4) // Show top 4 opportunities
         .forEach(([category, suggestion]) => {
+          const actionableSteps = Array.isArray(suggestion.suggestions)
+            ? suggestion.suggestions.slice(0, 3) // Take top 3 specific actions
+            : ["Review and optimize spending in this category"];
+
           insights.push({
             type:
               suggestion.potential_savings > 500 ? "opportunity" : "warning",
-            title: `${category} Optimization`,
-            description: Array.isArray(suggestion.suggestions)
-              ? suggestion.suggestions[0]
-              : "Review expenses in this category",
-            suggestion: `Potential savings: R${suggestion.potential_savings.toFixed(
+            title: `Optimize ${category} Spending`,
+            description: `Save R${suggestion.potential_savings.toFixed(
               0
-            )}`,
-            impact: `R${(suggestion.potential_savings * 12).toFixed(0)} annual savings`,
+            )}/month with these actions:`,
+            actionableSteps: actionableSteps,
+            impact: `R${(suggestion.potential_savings * 12).toFixed(
+              0
+            )} annual savings`,
             confidence: suggestion.confidence_level || "Medium",
+            currentAmount: suggestion.current_amount || 0,
+            savings: suggestion.potential_savings || 0,
           });
         });
     }
@@ -116,231 +170,509 @@ const Analysis = ({ financialData = {}, analysisResults = {}, realAnalysisResult
 
     const optimizedSavingsRate =
       backendData.total_income > 0
-        ? ((backendData.optimized_available_income || backendData.available_income) /
+        ? ((backendData.optimized_available_income ||
+            backendData.available_income) /
             backendData.total_income) *
           100
         : 0;
 
     let healthStatus = "";
+    let healthActions = [];
+
     if (savingsRate >= 20) {
-      healthStatus = "Excellent: You're saving over 20% of your income!";
+      healthStatus = "Excellent financial health - saving over 20%!";
+      healthActions = [
+        "Continue current saving habits",
+        "Consider increasing investment allocation",
+        "Review for tax-efficient savings options",
+      ];
     } else if (savingsRate >= 10) {
-      healthStatus =
-        "Good: You're saving 10-20% of your income. Room for improvement.";
+      healthStatus = "Good savings rate, but room for improvement";
+      healthActions = [
+        "Aim to increase savings rate to 20%",
+        "Review largest expense categories",
+        "Consider automated savings transfers",
+      ];
     } else if (savingsRate >= 0) {
-      healthStatus = "Caution: Low savings rate. Focus on expense reduction.";
+      healthStatus = "Low savings rate - immediate action needed";
+      healthActions = [
+        "Focus on reducing discretionary spending",
+        "Review and cancel unused subscriptions",
+        "Shop at more affordable stores",
+      ];
     } else {
-      healthStatus =
-        "Alert: Spending more than you earn. Immediate action required.";
+      healthStatus = "Critical: Spending exceeds income";
+      healthActions = [
+        "Immediately cut non-essential expenses",
+        "Consider additional income sources",
+        "Seek financial counseling if needed",
+      ];
     }
 
     insights.push({
       type: savingsRate >= 10 ? "positive" : "warning",
-      title: "Financial Health Status",
+      title: "Financial Health Assessment",
       description: healthStatus,
-      suggestion:
-        savingsRate < 10 ? "Focus on expense reduction" : "Maintain good habits",
-      impact: `${savingsRate.toFixed(1)}% → ${optimizedSavingsRate.toFixed(1)}%`,
+      actionableSteps: healthActions,
+      impact: `Current: ${savingsRate.toFixed(
+        1
+      )}% → Potential: ${optimizedSavingsRate.toFixed(1)}%`,
     });
 
     return insights.slice(0, 5);
   };
 
-  const buildDebtBreakdownFromTransactions = (txs = []) => {
-    const labelMap = {
-      mortgage: "Mortgage",
-      credit_card: "Credit Card",
-      personal_loan: "Personal Loan",
-      store_card: "Store Card",
-      auto_loan: "Vehicle Finance",
-      student_loan: "Student Loan",
-    };
-    const sums = {};
-    txs.forEach((t) => {
-      const isDebt =
-        String(t?.Category || "").toLowerCase() === "debt payments" ||
-        String(t?.Category || "").toLowerCase() === "debt payment" ||
-        t?.IsDebtPayment;
-      if (!isDebt) return;
-
-      const kind = String(t?.DebtKind || "").toLowerCase();
-      const rawAmt =
-        Number(t?.["Amount (ZAR)"]) ?? Number(t?.Amount) ?? Number(t?.amount) ?? 0;
-      const amt = Math.abs(rawAmt) || 0;
-      const baseLabel = labelMap[kind] || (t?.DebtName ? String(t.DebtName) : "Other Debt");
-      const label = `${baseLabel} (Debt)`;
-      sums[label] = (sums[label] || 0) + amt;
-    });
-
-    return Object.entries(sums).map(([name, amount]) => ({ name, amount }));
-  };
-
   const displayData = getDisplayData();
 
+  // NEW: Recharts data preparation
   const getChartData = () => {
-    const sortedCategories = [...displayData.categories].sort((a, b) => b.amount - a.amount);
-    // top 6 only (no "Remaining" slice)
+    const sortedCategories = [...displayData.categories].sort(
+      (a, b) => b.amount - a.amount
+    );
     const topCategories = sortedCategories.slice(0, 6);
 
-    return {
-      labels: topCategories.map((c) => `${c.name} (${(c.percentage || 0).toFixed(1)}%)`),
-      datasets: [
-        {
-          data: topCategories.map((c) => c.amount),
-          backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"],
-          borderWidth: 1,
-        },
+    return topCategories.map((category, index) => ({
+      name: category.name,
+      value: category.amount,
+      percentage: (category.percentage || 0).toFixed(1),
+      color: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"][
+        index
       ],
-    };
+    }));
   };
 
+  // NEW: Custom Recharts components
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0];
+      return (
+        <div className="bg-white p-2 border border-gray-200 rounded-lg shadow-lg">
+          <p className="font-medium text-xs">{data.payload.name}</p>
+          <p className="text-discovery-blue text-xs">
+            R{data.value.toLocaleString()} ({data.payload.percentage}%)
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const CustomLabel = ({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    percentage,
+  }) => {
+    if (parseFloat(percentage) < 5) return null; // Don't show labels for small slices
+
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? "start" : "end"}
+        dominantBaseline="central"
+        fontSize="10"
+        fontWeight="600"
+      >
+        {`${percentage}%`}
+      </text>
+    );
+  };
+
+  const chartData = getChartData();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-6 rounded-xl border border-discovery-gold/20">
-        <h2 className="text-xl font-bold mb-2 text-discovery-blue">Financial Analysis Complete</h2>
-        <p className="text-gray-600">
-          AI analyzed {displayData.transactionCount} transactions across {displayData.categories.length} categories
+      <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-4 rounded-lg border border-discovery-gold/20">
+        <h2 className="text-sm font-bold mb-2 text-discovery-blue">
+          Financial Analysis Complete
+        </h2>
+        <p className="text-gray-600 text-xs">
+          AI analyzed {displayData.transactionCount} transactions across{" "}
+          {displayData.categories.length} categories
         </p>
         {displayData.enhancedMode && (
-          <div className="mt-2 text-sm text-discovery-gold">✨ Enhanced statistical analysis active</div>
+          <div className="mt-1 text-xs text-discovery-gold flex items-center">
+            <Sparkles className="w-3 h-3 mr-1" />
+            Enhanced statistical analysis active
+          </div>
         )}
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white p-4 rounded-xl border border-discovery-gold/20 text-center">
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-white p-2 rounded-lg border border-discovery-gold/20 text-center">
           <p className="text-xs text-gray-600 mb-1">Income</p>
-          <p className="text-lg font-bold text-green-600">R{displayData.totalIncome.toLocaleString()}</p>
+          <p className="text-sm font-bold text-green-600">
+            R{displayData.totalIncome.toLocaleString()}
+          </p>
+          <p className="text-[10px] text-gray-500">Monthly total</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-discovery-gold/20 text-center">
+        <div className="bg-white p-2 rounded-lg border border-discovery-gold/20 text-center">
           <p className="text-xs text-gray-600 mb-1">Expenses</p>
-          <p className="text-lg font-bold text-red-600">R{displayData.totalExpenses.toLocaleString()}</p>
+          <p className="text-sm font-bold text-red-600">
+            R{displayData.totalExpenses.toLocaleString()}
+          </p>
+          <p className="text-[10px] text-gray-500">Total spending</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-discovery-gold/20 text-center">
+        <div className="bg-white p-2 rounded-lg border border-discovery-gold/20 text-center">
           <p className="text-xs text-gray-600 mb-1">Available</p>
-          <p className="text-lg font-bold text-discovery-blue">R{displayData.disposableIncome.toLocaleString()}</p>
+          <p className="text-sm font-bold text-discovery-blue">
+            R{displayData.disposableIncome.toLocaleString()}
+          </p>
+          <p className="text-[10px] text-gray-500">To save/invest</p>
         </div>
       </div>
 
-      {/* Pie Chart */}
-      <div className="bg-white p-6 rounded-xl border border-discovery-gold/20 shadow-sm">
-        <h3 className="text-lg font-semibold mb-4 flex items-center text-discovery-blue">
-          <span className="mr-2 text-discovery-gold text-xl">📊</span> Expense Distribution
+      {/* FIXED: Recharts Pie Chart with Proper Center Text */}
+      <div className="bg-white p-4 rounded-lg border border-discovery-gold/20 shadow-sm">
+        <h3 className="text-sm font-semibold mb-2 flex items-center text-discovery-blue">
+          <BarChart3 className="w-4 h-4 mr-1 text-discovery-gold" />
+          Expense Distribution
         </h3>
-        <div className="h-64">
-          <Pie
-            data={getChartData()}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              cutout: "60%",
-              plugins: {
-                legend: {
-                  position: "right",
-                  align: "center",
-                  labels: {
-                    boxWidth: 10,
-                    padding: 8,
-                    font: { size: 11 },
-                    generateLabels: (chart) => {
-                      const original = ChartJS.overrides?.pie?.plugins?.legend?.labels?.generateLabels;
-                      if (!original) return [];
-                      return original(chart).map((label) => {
-                        if (label.text && label.text.length > 22) {
-                          label.text = label.text.slice(0, 22) + "...";
-                        }
-                        return label;
-                      });
-                    },
-                  },
-                },
-                tooltip: {
-                  callbacks: {
-                    label: function (context) {
-                      const label = context.label || "";
-                      const value = context.raw || 0;
-                      const total = context.dataset.data.reduce((a, b) => a + b, 0) || 1;
-                      const percentage = ((value / total) * 100).toFixed(1);
-                      return `${label}: R${value.toLocaleString()} (${percentage}%)`;
-                    },
-                  },
-                },
-              },
+
+        <div className="relative h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="45%"
+                cy="50%"
+                labelLine={false}
+                label={CustomLabel}
+                outerRadius={80}
+                innerRadius={50}
+                fill="#8884d8"
+                dataKey="value"
+                stroke="#ffffff"
+                strokeWidth={1}
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+              <Legend
+                verticalAlign="middle"
+                align="right"
+                layout="vertical"
+                iconType="circle"
+                wrapperStyle={{
+                  paddingLeft: "20px",
+                  fontSize: "10px",
+                  lineHeight: "1.2",
+                  width: "40%",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+                iconSize={6}
+                formatter={(value, entry) => (
+                  <span
+                    style={{
+                      color: "#374151",
+                      fontSize: "9px",
+                      display: "block",
+                      marginBottom: "2px",
+                      fontWeight: "400",
+                    }}
+                  >
+                    {value} ({entry.payload.percentage}%)
+                  </span>
+                )}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+
+          {/* FIXED: Text moved DOUBLE that left again */}
+          <div
+            className="absolute inset-0 flex items-center pointer-events-none"
+            style={{
+              justifyContent: "flex-start",
+              paddingLeft: "calc(45% - 92px)",
             }}
-            plugins={[
-              {
-                id: "centerText",
-                beforeDraw: (chart) => {
-                  const {
-                    ctx,
-                    chartArea: { width, height, top, left },
-                  } = chart;
-                  ctx.save();
-                  const centerX = left + width / 2;
-                  const centerY = top + height / 2;
-                  const amount = `R${displayData.totalExpenses.toLocaleString()}`;
-                  const label = "Total expenses";
-                  const amountFontSize = Math.min(Math.max(width / 8, 12), 28);
-                  const labelFontSize = Math.min(Math.max(width / 20, 10), 14);
-
-                  ctx.textAlign = "center";
-                  ctx.textBaseline = "middle";
-
-                  // Draw label slightly above the number, but keep overall centered
-                  ctx.font = `600 ${labelFontSize}px sans-serif`;
-                  ctx.fillStyle = "#6b7280";
-                  ctx.fillText(label, centerX, centerY - amountFontSize * 0.6);
-
-                  ctx.font = `700 ${amountFontSize}px sans-serif`;
-                  ctx.fillStyle = "#dc2626";
-                  ctx.fillText(amount, centerX, centerY + labelFontSize * 0.35);
-
-                  ctx.restore();
-                },
-              },
-              {
-                id: "responsiveLegend",
-                beforeUpdate: (chart) => {
-                  try {
-                    const width = chart.width || chart.chartArea?.width || 0;
-                    const legendOpts = chart.options.plugins.legend;
-                    if (width < 480) {
-                      legendOpts.position = "bottom";
-                      legendOpts.align = "center";
-                    } else {
-                      legendOpts.position = "right";
-                      legendOpts.align = "center";
-                    }
-                  } catch (e) {
-                    // ignore
-                  }
-                },
-              },
-            ]}
-          />
+          >
+            <div className="text-center">
+              <div className="text-xs text-gray-500 font-medium mb-0.5 leading-tight">
+                Total expenses
+              </div>
+              <div className="text-xs font-bold text-red-600 leading-tight">
+                R{displayData.totalExpenses.toLocaleString()}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* AI Recommendations */}
-      {displayData.insights && displayData.insights.length > 0 && (
-        <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-6 rounded-xl border border-discovery-gold/20">
-          <h3 className="text-lg font-semibold mb-4 text-discovery-blue">AI-Powered Recommendations</h3>
-          <div className="grid grid-cols-1 gap-3">
-            {displayData.insights.map((insight, idx) => (
-              <div key={idx} className="flex items-start space-x-3 p-3 bg-white rounded-lg border border-discovery-gold/20">
-                <div className="mt-1">
-                  {insight.type === "warning" && <span className="text-red-500 text-lg">⚠️</span>}
-                  {insight.type === "opportunity" && <span className="text-discovery-gold text-lg">🎯</span>}
-                  {insight.type === "positive" && <span className="text-discovery-blue text-lg">✅</span>}
+      {/* Detected Debt Payments */}
+      {displayData.debtPayments && displayData.debtPayments.length > 0 && (
+        <div className="bg-white p-2 rounded-lg border border-discovery-gold/20 shadow-sm">
+          <h3 className="text-xs font-semibold mb-2 flex items-center text-discovery-blue">
+            <CreditCard className="w-3 h-3 mr-1 text-discovery-gold" />
+            Detected Debt Payments
+          </h3>
+
+          {/* Debt Metrics Summary */}
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="bg-discovery-gold/10 p-1.5 rounded border border-discovery-gold/20">
+              <p className="text-[10px] text-gray-600">
+                Total Monthly Payments
+              </p>
+              <p className="text-xs font-bold text-discovery-blue">
+                R
+                {displayData.debtPayments
+                  .reduce((sum, debt) => sum + debt.amount, 0)
+                  .toLocaleString()}
+              </p>
+              <p className="text-[10px] text-discovery-gold">
+                {displayData.totalIncome > 0
+                  ? `${(
+                      (displayData.debtPayments.reduce(
+                        (sum, debt) => sum + debt.amount,
+                        0
+                      ) /
+                        displayData.totalIncome) *
+                      100
+                    ).toFixed(1)}% of income`
+                  : "N/A"}
+              </p>
+            </div>
+            <div className="bg-discovery-blue/10 p-1.5 rounded border border-discovery-blue/20">
+              <p className="text-[10px] text-gray-600">Debt Service Ratio</p>
+              <p className="text-xs font-bold text-discovery-blue">
+                {displayData.totalIncome > 0
+                  ? `${(
+                      (displayData.debtPayments.reduce(
+                        (sum, debt) => sum + debt.amount,
+                        0
+                      ) /
+                        displayData.totalIncome) *
+                      100
+                    ).toFixed(1)}%`
+                  : "N/A"}
+              </p>
+              <p className="text-[10px] text-discovery-gold">
+                {(() => {
+                  const ratio =
+                    displayData.totalIncome > 0
+                      ? (displayData.debtPayments.reduce(
+                          (sum, debt) => sum + debt.amount,
+                          0
+                        ) /
+                          displayData.totalIncome) *
+                        100
+                      : 0;
+                  if (ratio > 40) return "High Risk";
+                  if (ratio > 28) return "Moderate Risk";
+                  if (ratio > 20) return "Manageable";
+                  return "Healthy";
+                })()}
+              </p>
+            </div>
+          </div>
+
+          {/* Individual Debt Payments */}
+          <div className="space-y-1">
+            {displayData.debtPayments.map((debt, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-1 bg-gray-50 rounded border"
+              >
+                <div className="flex items-center space-x-1">
+                  <CreditCard className="w-3 h-3 text-discovery-blue" />
+                  <span className="text-[10px] font-medium text-gray-700">
+                    {debt.name}
+                  </span>
+                  <span className="text-[10px] text-gray-500">
+                    ({debt.type})
+                  </span>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm text-discovery-blue">{insight.title}</p>
-                  <p className="text-xs text-gray-600">{insight.suggestion || insight.description}</p>
-                  <p className="text-xs text-discovery-gold font-medium">{insight.impact}</p>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-discovery-blue">
+                    R{debt.amount.toLocaleString()}
+                  </span>
+                  <p className="text-[10px] text-discovery-gold">
+                    {displayData.totalIncome > 0
+                      ? `${(
+                          (debt.amount / displayData.totalIncome) *
+                          100
+                        ).toFixed(1)}%`
+                      : "N/A"}
+                  </p>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Debt Analysis & Recommendations */}
+          <div className="mt-2 space-y-1">
+            {(() => {
+              const totalDebtPayments = displayData.debtPayments.reduce(
+                (sum, debt) => sum + debt.amount,
+                0
+              );
+              const debtToIncomeRatio =
+                displayData.totalIncome > 0
+                  ? (totalDebtPayments / displayData.totalIncome) * 100
+                  : 0;
+
+              if (debtToIncomeRatio > 40) {
+                return (
+                  <div className="p-1 bg-discovery-gold/10 rounded border border-discovery-gold/20">
+                    <p className="text-[10px] text-discovery-blue font-medium flex items-center">
+                      <AlertTriangle className="w-2 h-2 mr-1" />
+                      High debt burden detected
+                    </p>
+                    <p className="text-[10px] text-gray-600">
+                      Consider debt consolidation or aggressive payoff strategy
+                    </p>
+                  </div>
+                );
+              } else if (debtToIncomeRatio > 28) {
+                return (
+                  <div className="p-1 bg-discovery-blue/10 rounded border border-discovery-blue/20">
+                    <p className="text-[10px] text-discovery-blue font-medium flex items-center">
+                      <Target className="w-2 h-2 mr-1" />
+                      Moderate debt levels
+                    </p>
+                    <p className="text-[10px] text-gray-600">
+                      Focus on high-interest debt first
+                    </p>
+                  </div>
+                );
+              } else if (debtToIncomeRatio > 0) {
+                return (
+                  <div className="p-1 bg-discovery-gold/10 rounded border border-discovery-gold/20">
+                    <p className="text-[10px] text-discovery-blue font-medium flex items-center">
+                      <CheckCircle className="w-2 h-2 mr-1" />
+                      Manageable debt levels
+                    </p>
+                    <p className="text-[10px] text-gray-600">
+                      Optimize payment strategy for faster payoff
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            <div className="p-1 bg-discovery-gold/10 rounded border border-discovery-gold/20">
+              <p className="text-[10px] text-discovery-blue font-medium flex items-center">
+                <Sparkles className="w-2 h-2 mr-1" />
+                Upload debt statement for detailed optimization strategies
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced AI Recommendations */}
+      {displayData.insights && displayData.insights.length > 0 && (
+        <div className="bg-gradient-to-r from-discovery-gold/10 to-discovery-blue/10 p-2 rounded-lg border border-discovery-gold/20">
+          <h3 className="text-xs font-semibold mb-2 text-discovery-blue">
+            AI-Powered Action Plan
+          </h3>
+          <div className="grid grid-cols-1 gap-2">
+            {displayData.insights.map((insight, idx) => (
+              <div
+                key={idx}
+                className="p-2 bg-white rounded-lg border border-discovery-gold/20"
+              >
+                <div className="flex items-start space-x-2">
+                  <div className="mt-0.5">
+                    {insight.type === "warning" && (
+                      <AlertTriangle className="w-3 h-3 text-discovery-gold" />
+                    )}
+                    {insight.type === "opportunity" && (
+                      <Target className="w-3 h-3 text-discovery-blue" />
+                    )}
+                    {insight.type === "positive" && (
+                      <CheckCircle className="w-3 h-3 text-discovery-gold" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-[10px] text-discovery-blue">
+                        {insight.title}
+                      </p>
+                      {insight.savings > 0 && (
+                        <span className="text-[10px] bg-discovery-gold/20 text-discovery-gold px-1 py-0.5 rounded">
+                          Save R{insight.savings.toFixed(0)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-600 mb-1">
+                      {insight.description}
+                    </p>
+
+                    {/* Actionable Steps */}
+                    {insight.actionableSteps &&
+                      insight.actionableSteps.length > 0 && (
+                        <div className="space-y-0.5 mb-1">
+                          {insight.actionableSteps.map((step, stepIdx) => (
+                            <div
+                              key={stepIdx}
+                              className="flex items-start space-x-1"
+                            >
+                              <ArrowRight className="w-2 h-2 text-discovery-gold mt-0.5 flex-shrink-0" />
+                              <span className="text-[10px] text-gray-700">
+                                {step}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                    {insight.impact && (
+                      <p className="text-[10px] text-discovery-gold font-medium">
+                        Impact: {insight.impact}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Optimization Summary */}
+      {displayData.totalPotentialSavings > 0 && (
+        <div className="bg-white p-2 rounded-lg border border-discovery-gold/20 shadow-sm">
+          <h3 className="text-xs font-semibold mb-2 flex items-center text-discovery-blue">
+            <TrendingUp className="w-3 h-3 mr-1 text-discovery-gold" />
+            Optimization Potential
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-center p-2 bg-gray-50 rounded">
+              <p className="text-[10px] text-gray-600">Current Available</p>
+              <p className="text-xs font-bold text-discovery-blue">
+                R{displayData.disposableIncome.toLocaleString()}
+              </p>
+            </div>
+            <div className="text-center p-2 bg-discovery-gold/10 rounded">
+              <p className="text-[10px] text-gray-600">With Optimizations</p>
+              <p className="text-xs font-bold text-discovery-gold">
+                R{displayData.optimizedIncome.toLocaleString()}
+              </p>
+            </div>
+          </div>
+          <div className="mt-2 text-center">
+            <p className="text-[10px] text-discovery-gold font-medium">
+              Potential increase: R
+              {(
+                displayData.optimizedIncome - displayData.disposableIncome
+              ).toLocaleString()}
+              /month
+            </p>
           </div>
         </div>
       )}

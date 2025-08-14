@@ -19,8 +19,8 @@ const NotificationPanel = ({
   };
 
   return (
-    <div className="absolute top-16 right-4 w-80 bg-white rounded-xl shadow-lg border border-discovery-gold/20 z-50 max-h-96 overflow-y-auto">
-      <div className="p-4 border-b border-discovery-gold/20">
+    <div className="absolute top-12 right-2 w-64 bg-white rounded-lg shadow-lg border border-discovery-gold/20 z-50 max-h-80 overflow-y-auto">
+      <div className="p-2 border-b border-discovery-gold/20">
         <div className="flex justify-between items-center">
           <h3 className="font-semibold text-discovery-blue">Notifications</h3>
           <button
@@ -31,20 +31,20 @@ const NotificationPanel = ({
           </button>
         </div>
       </div>
-      <div className="p-2">
+      <div className="p-1">
         {notifications.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No notifications</p>
+          <p className="text-gray-500 text-center py-2">No notifications</p>
         ) : (
           notifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-3 mb-2 rounded-lg border-l-4 ${getNotificationStyle(
+              className={`p-2 mb-1 rounded-lg border-l-2 ${getNotificationStyle(
                 notification.type
               )}`}
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h4 className="font-medium text-sm">{notification.title}</h4>
+                  <h4 className="font-medium text-xs">{notification.title}</h4>
                   <p className="text-xs text-gray-600 mt-1">
                     {notification.message}
                   </p>
