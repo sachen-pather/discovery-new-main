@@ -1,4 +1,4 @@
-To view the working prototype - please take a look at the url
+To view the working prototype - please take a look at the url in the "About" section
 
 # Discovery Financial AI Assistant
 
