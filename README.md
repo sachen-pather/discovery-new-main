@@ -4,7 +4,7 @@ To view the working prototype - please take a look at the url in the "About" sec
 
 A comprehensive React-based financial analysis application that provides AI-powered insights for personal finance management. Built with South African users in mind, featuring bank statement analysis, debt optimization, investment planning, and Discovery Vitality integration.
 
-## 🌟 Features
+## Features
 
 ### Core Functionality
 - **AI-Powered Bank Statement Analysis** - Upload CSV/PDF statements for automatic transaction categorization
@@ -21,7 +21,7 @@ A comprehensive React-based financial analysis application that provides AI-powe
 - **Interactive Data Visualization** - Professional charts and expense breakdowns
 - **Mobile-First Design** - Optimized phone interface with native app feel
 
-## 🏗️ Tech Stack
+## Tech Stack
 
 ### Frontend
 - **React 18** - Modern functional components with hooks
@@ -40,7 +40,7 @@ A comprehensive React-based financial analysis application that provides AI-powe
 - **Date-fns** - Date manipulation
 - **Lodash** - Utility functions
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 ```bash
@@ -85,7 +85,7 @@ npm run build
 npm run preview
 ```
 
-## 📱 Application Structure
+## Application Structure
 
 ### Main Components
 
@@ -94,12 +94,12 @@ Central application state management with authentication, file upload handling, 
 
 #### `TabNavigation.jsx`
 Mobile-optimized navigation with custom icons:
-- 📊 **Dashboard** - Financial overview and quick actions
-- 📈 **Analysis** - Detailed spending breakdown and AI insights
-- 💳 **Debt** - Debt optimization and payoff strategies
-- 📈 **Investment** - Portfolio recommendations and projections
-- 💰 **Budget** - Expense tracking and goal setting
-- ✅ **Vitality** - Health and financial wellness integration
+-  **Dashboard** - Financial overview and quick actions
+-  **Analysis** - Detailed spending breakdown and AI insights
+-  **Debt** - Debt optimization and payoff strategies
+-  **Investment** - Portfolio recommendations and projections
+-  **Budget** - Expense tracking and goal setting
+-  **Vitality** - Health and financial wellness integration
 
 #### `ChatBot.jsx`
 Advanced AI financial advisor featuring:
@@ -122,7 +122,7 @@ Robust API client with:
 - Comprehensive financial analysis endpoints
 - Debt and investment strategy calculations
 
-## 🎯 Key Features Deep Dive
+##  Key Features Deep Dive
 
 ### AI-Powered Analysis
 - **Enhanced Statistical Modeling** - Uses South African household spending patterns
@@ -144,13 +144,13 @@ Robust API client with:
 - **Status Tracking** - Gold, Silver, Bronze membership benefits
 - **Wellness Integration** - Connect financial and physical health
 
-## 🔐 Security & Authentication
+##  Security & Authentication
 
 - Demo authentication system (extendable for production)
 - Secure API communication with timeout handling
 - Client-side data protection and privacy considerations
 
-## 🌍 South African Context
+##  South African Context
 
 The application is specifically designed for South African users with:
 - **Local Currency** - All amounts in South African Rand (ZAR)
@@ -159,7 +159,7 @@ The application is specifically designed for South African users with:
 - **Tax Considerations** - TFSA limits, retirement annuity benefits
 - **Transport Context** - Taxi, Uber, Bolt, Gautrain integration
 
-## 🔧 Development
+##  Development
 
 ### Project Structure
 ```
@@ -194,14 +194,14 @@ The application uses a custom Discovery-themed color palette:
 - **Responsive Design** - Mobile-first approach with Tailwind
 - **Modular Structure** - Reusable components and clear separation of concerns
 
-## 📊 Data Flow
+##  Data Flow
 
 1. **Bank Statement Upload** → AI processing and categorization
 2. **Analysis Generation** → Spending insights and recommendations
 3. **Strategy Planning** → Debt/investment optimization
 4. **Ongoing Monitoring** → Budget tracking and goal progress
 
-## 🤖 AI Integration
+##  AI Integration
 
 The Gemini AI chatbot provides:
 - **Contextual Financial Advice** - Based on real user data
@@ -216,7 +216,7 @@ The Gemini AI chatbot provides:
 - Multi-turn conversation capabilities
 - Error handling and fallback responses
 
-## 📱 Mobile Experience
+##  Mobile Experience
 
 ### Phone Frame Design
 - **Native App Feel** - Custom phone frame simulation
@@ -230,7 +230,7 @@ The Gemini AI chatbot provides:
 - Smooth animations and transitions
 - Efficient loading states
 
-## 🚀 Deployment
+##  Deployment
 
 ### Production Considerations
 - **Static Hosting** - Vercel, Netlify compatible
@@ -244,7 +244,7 @@ The Gemini AI chatbot provides:
 - Debt and investment calculation services
 - User authentication system (for production)
 
-## 📊 Sample Data & Testing
+##  Sample Data & Testing
 
 ### Demo Profiles
 The application includes sample financial profiles:
@@ -259,7 +259,7 @@ For testing purposes:
 - **ID:** demo123
 - **Password:** password123
 
-## 🧪 Testing Strategy
+##  Testing Strategy
 
 ### File Upload Testing
 - CSV bank statements from major SA banks
@@ -273,7 +273,7 @@ For testing purposes:
 - Edge case handling and fallbacks
 - Performance under load
 
-## 🔮 Future Enhancements
+##  Future Enhancements
 
 ### Planned Features
 - **Real Banking API Integration** - Live account connectivity
@@ -288,7 +288,7 @@ For testing purposes:
 - **Advanced Analytics** - Machine learning insights
 - **API Rate Limiting** - Enhanced performance management
 
-## 🛠️ Development Setup
+##  Development Setup
 
 ### IDE Configuration
 Recommended VS Code extensions:
@@ -303,7 +303,7 @@ Recommended VS Code extensions:
 - Husky for pre-commit hooks
 - Conventional commits for clear history
 
-## 📈 Performance Optimization
+## Performance Optimization
 
 ### Bundle Optimization
 - Code splitting by route
@@ -317,7 +317,7 @@ Recommended VS Code extensions:
 - Optimized API calls with caching
 - Smooth animations with CSS transforms
 
-## 🔒 Security Considerations
+## Security Considerations
 
 ### Data Protection
 - Client-side data encryption where applicable
@@ -331,7 +331,7 @@ Recommended VS Code extensions:
 - User consent for data processing
 - Clear privacy policy implementation
 
-## 📚 Documentation
+## Documentation
 
 ### API Documentation
 - Comprehensive endpoint documentation
@@ -345,7 +345,7 @@ Recommended VS Code extensions:
 - Styling customization guides
 - Integration patterns
 
-## 🤝 Contributing
+##  Contributing
 
 ### Development Guidelines
 - Follow React best practices
@@ -359,20 +359,5 @@ Recommended VS Code extensions:
 - Security review requirements
 - Performance impact assessment
 
-## 📄 License
 
-This project is proprietary software developed for Discovery Health.
 
-## 📞 Support
-
-For technical issues or questions:
-- Internal development team contact
-- Documentation wiki
-- Issue tracking system
-- Regular development meetings
-
----
-
-**Built with ❤️ for South African financial wellness**
-
-*Empowering users to make informed financial decisions through AI-powered insights and comprehensive analysis tools.*
